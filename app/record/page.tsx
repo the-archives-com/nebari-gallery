@@ -183,8 +183,22 @@ export default function RecordPage() {
         <nav className="mx-auto grid w-full max-w-2xl gap-3 sm:grid-cols-3">
           <Link
             href="/"
-            className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all duration-300 hover:scale-[1.02] hover:border-stone-400 hover:bg-stone-100 active:scale-95"
-          >
+            className="
+              flex
+              min-h-12
+              w-full
+              items-center
+              justify-center
+              rounded-full
+              bg-stone-800
+              px-5
+              py-3
+              text-sm
+              text-stone-50
+              transition-all
+              sm:w-auto
+            "
+>
             Home
           </Link>
 
@@ -278,6 +292,7 @@ export default function RecordPage() {
             id="photo-upload"
             type="file"
             accept="image/*"
+            capture="environment"
             className="hidden"
             onChange={handlePhotoSelect}
           />

@@ -55,85 +55,29 @@ export default function GalleryPage() {
           </p>
         </header>
 
-<nav className="mx-auto grid w-full max-w-2xl gap-3 sm:grid-cols-3">
-  <Link
-    href="/"
-    aria-current="page"
-    className="
-      flex
-      min-h-12
-      items-center
-      justify-center
-      rounded-full
-      bg-stone-800
-      px-5
-      py-3
-      text-sm
-      text-stone-50
-      transition-all
-      duration-300
-      hover:scale-[1.02]
-      hover:bg-stone-700
-      active:scale-95
-    "
-  >
-    Home
-  </Link>
+        <nav className="mx-auto grid w-full max-w-2xl gap-3 sm:grid-cols-3">
+          <Link
+            href="/"
+            className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all duration-300 hover:scale-[1.02] hover:border-stone-400 hover:bg-stone-100 active:scale-95"
+          >
+            Home
+          </Link>
 
-  <Link
-    href="/gallery"
-    className="
-      flex
-      min-h-12
-      items-center
-      justify-center
-      rounded-full
-      border
-      border-stone-300
-      bg-white
-      px-5
-      py-3
-      text-sm
-      text-stone-700
-      transition-all
-      duration-300
-      hover:scale-[1.02]
-      hover:border-stone-400
-      hover:bg-stone-100
-      active:scale-95
-    "
-  >
-    Gallery
-  </Link>
+          <Link
+            href="/gallery"
+            aria-current="page"
+            className="flex min-h-12 items-center justify-center rounded-full bg-stone-800 px-5 py-3 text-sm text-stone-50 transition-all duration-300 hover:scale-[1.02] hover:bg-stone-700 active:scale-95"
+          >
+            Gallery
+          </Link>
 
-  <Link
-    href="/record"
-    className="
-      flex
-      min-h-12
-      items-center
-      justify-center
-      rounded-full
-      border
-      border-stone-300
-      bg-white
-      px-5
-      py-3
-      text-sm
-      text-stone-700
-      transition-all
-      duration-300
-      hover:scale-[1.02]
-      hover:border-stone-400
-      hover:bg-stone-100
-      active:scale-95
-    "
-  >
-    Record a Legend
-  </Link>
-</nav>
-
-
+          <Link
+            href="/record"
+            className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all duration-300 hover:scale-[1.02] hover:border-stone-400 hover:bg-stone-100 active:scale-95"
+          >
+            Record a Legend
+          </Link>
+        </nav>
 
         {loading && (
           <p className="italic text-stone-500">
@@ -157,96 +101,72 @@ export default function GalleryPage() {
 
             <Link
               href="/record"
-              className="
-                mt-6
-                inline-block
-                rounded-full
-                bg-stone-800
-                px-8
-                py-3
-                text-stone-50
-                transition-all
-                duration-300
-                hover:scale-105
-                hover:bg-stone-700
-                active:scale-95
-              "
+              className="mt-6 inline-block rounded-full bg-stone-800 px-8 py-3 text-stone-50 transition-all duration-300 hover:scale-105 hover:bg-stone-700 active:scale-95"
             >
               Record a Legend
             </Link>
           </section>
         )}
 
-        {legends.length > 0 && (
-          <section className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {legends.map((legend) => (
-              <article
-                key={legend.id}
-                className="
-                  rounded-lg
-                  bg-white
-                  p-3
-                  pb-10
-                  shadow-xl
-                  transition-all
-                  duration-500
-                  hover:-translate-y-1
-                  hover:shadow-2xl
-                "
-              >
-                <div className="flex min-h-72 items-center justify-center overflow-hidden rounded bg-stone-100">
-                  <img
-                    src={legend.image_url}
-                    alt={legend.title}
-                    className="max-h-96 w-full object-contain"
-                  />
-                </div>
+      {legends.length > 0 && (
+  <section
+    className="
+      grid
+      grid-cols-2
+      gap-5
+      sm:grid-cols-3
+      lg:grid-cols-4
+      xl:grid-cols-5
+    "
+  >
+    {legends.map((legend) => (
+      <Link
+        key={legend.id}
+        href={`/gallery/${legend.id}`}
+        aria-label={`Open ${legend.title}`}
+        className="group block"
+      >
+        <article
+          className="
+            overflow-hidden
+            rounded-xl
+            bg-white
+            p-2
+            pb-8
+            shadow-lg
+            transition-all
+            duration-500
+            group-hover:-translate-y-2
+            group-hover:shadow-2xl
+            group-focus-visible:outline-none
+            group-focus-visible:ring-2
+            group-focus-visible:ring-stone-500
+            group-focus-visible:ring-offset-4
+          "
+        >
+          <div className="aspect-square overflow-hidden rounded bg-stone-100">
+            <img
+              src={legend.image_url}
+              alt={legend.title}
+              className="
+                h-full
+                w-full
+                object-cover
+                transition-all
+                duration-700
+                group-hover:scale-105
+              "
+            />
+          </div>
 
-                <div className="px-3 pt-5 text-left">
-                  <h2 className="text-lg font-medium text-stone-800">
-                    {legend.title}
-                  </h2>
-
-                  {legend.reflection && (
-                    <p className="mt-3 text-sm italic leading-6 text-stone-500">
-                      {legend.reflection}
-                    </p>
-                  )}
-
-                  <time
-                    dateTime={legend.created_at}
-                    className="mt-4 block text-xs text-stone-400"
-                  >
-                    {new Date(legend.created_at).toLocaleDateString(
-                      "en-AU",
-                      {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      },
-                    )}
-                  </time>
-                </div>
-              </article>
-            ))}
-          </section>
-        )}
-
-        <nav className="flex justify-center gap-6">
-          <Link
-            href="/"
-            className="text-stone-600 transition-colors hover:text-stone-900"
-          >
-            ← Home
-          </Link>
-
-          <Link
-            href="/record"
-            className="text-stone-600 transition-colors hover:text-stone-900"
-          >
-            Record a Legend →
-          </Link>
-        </nav>
+          <h2 className="mt-3 truncate px-2 text-sm font-medium text-stone-700">
+            {legend.title}
+          </h2>
+        </article>
+      </Link>
+    ))}
+  </section>
+)}  
       </div>
     </main>
   );
