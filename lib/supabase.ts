@@ -8,13 +8,13 @@ const supabasePublishableKey =
 
 if (!supabaseUrl) {
   throw new Error(
-    "NEXT_PUBLIC_SUPABASE_URL is missing from .env.local",
+    "NEXT_PUBLIC_SUPABASE_URL is missing in this deployment environment",
   );
 }
 
 if (!supabasePublishableKey) {
   throw new Error(
-    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is missing from .env.local",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is missing in this deployment environment",
   );
 }
 

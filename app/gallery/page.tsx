@@ -4,54 +4,74 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { supabase } from "../../lib/supabase";
+import { getStudio } from "../../lib/studios";
 
-type Legend = {
+type FeaturedArtwork = {
   id: number;
   created_at: string;
+  studio_slug: string;
   title: string;
-  reflection: string | null;
+  description: string | null;
   image_url: string;
+  category: string | null;
 };
 
 export default function GalleryPage() {
-  const [legends, setLegends] = useState<Legend[]>([]);
+  const [featuredArtwork, setFeaturedArtwork] =
+    useState<FeaturedArtwork[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    async function loadLegends() {
+    async function loadGallery() {
       setLoading(true);
       setErrorMessage("");
 
       const { data, error } = await supabase
-        .from("legends")
-        .select("id, created_at, title, reflection, image_url")
-        .order("created_at", { ascending: false });
+        .from("studio_artworks")
+        .select(
+          "id, created_at, studio_slug, title, description, image_url, category",
+        )
+        .eq("gallery_status", "featured")
+        .order("created_at", {
+          ascending: false,
+        });
 
       if (error) {
-        console.error("Could not load Legends:", error);
-        setErrorMessage("The Gallery could not be loaded.");
+        console.error(
+          "Could not load Nebari Gallery:",
+          error,
+        );
+
+        setErrorMessage(
+          "The Gallery could not be loaded.",
+        );
+
         setLoading(false);
         return;
       }
 
-      setLegends(data ?? []);
+      setFeaturedArtwork(data ?? []);
       setLoading(false);
     }
 
-    loadLegends();
+    loadGallery();
   }, []);
 
   return (
-    <main className="min-h-screen bg-stone-50 px-6 py-16 fade-in">
-      <div className="mx-auto max-w-6xl space-y-10 text-center">
-        <header className="space-y-3">
+    <main className="min-h-screen bg-stone-50 px-6 py-16">
+      <div className="mx-auto max-w-6xl space-y-14">
+
+        <header className="space-y-4 text-center">
+          <p className="text-3xl">🌿</p>
+
           <h1 className="text-4xl font-light tracking-wide sm:text-6xl">
-            Gallery
+            Nebari Gallery
           </h1>
 
-          <p className="text-stone-600">
-            The forest is beginning to grow.
+          <p className="mx-auto max-w-2xl text-stone-600">
+            A shared gallery of creative work from personal Studios.
           </p>
         </header>
 
@@ -72,101 +92,119 @@ export default function GalleryPage() {
           </Link>
 
           <Link
-            href="/record"
+            href="/studios"
             className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all duration-300 hover:scale-[1.02] hover:border-stone-400 hover:bg-stone-100 active:scale-95"
           >
-            Record a Legend
+            Studios
           </Link>
         </nav>
 
-        {loading && (
-          <p className="italic text-stone-500">
-            🌿 Walking through the Gallery...
-          </p>
-        )}
+        <section className="space-y-6">
+          <div className="text-center">
+            <h2 className="text-3xl font-light text-stone-800">
+              The Gallery
+            </h2>
 
-        {errorMessage && (
-          <p role="alert" className="text-red-700">
-            {errorMessage}
-          </p>
-        )}
-
-        {!loading && !errorMessage && legends.length === 0 && (
-          <section className="mx-auto max-w-md rounded-2xl border border-stone-300 bg-white p-8 shadow-lg">
-            <p className="text-2xl">🌱</p>
-
-            <p className="mt-4 text-stone-600">
-              No Legends have been planted yet.
+            <p className="mt-2 text-sm text-stone-500">
+              Selected work from across the neighbourhood.
             </p>
-
-            <Link
-              href="/record"
-              className="mt-6 inline-block rounded-full bg-stone-800 px-8 py-3 text-stone-50 transition-all duration-300 hover:scale-105 hover:bg-stone-700 active:scale-95"
-            >
-              Record a Legend
-            </Link>
-          </section>
-        )}
-
-      {legends.length > 0 && (
-  <section
-    className="
-      grid
-      grid-cols-2
-      gap-5
-      sm:grid-cols-3
-      lg:grid-cols-4
-      xl:grid-cols-5
-    "
-  >
-    {legends.map((legend) => (
-      <Link
-        key={legend.id}
-        href={`/gallery/${legend.id}`}
-        aria-label={`Open ${legend.title}`}
-        className="group block"
-      >
-        <article
-          className="
-            overflow-hidden
-            rounded-xl
-            bg-white
-            p-2
-            pb-8
-            shadow-lg
-            transition-all
-            duration-500
-            group-hover:-translate-y-2
-            group-hover:shadow-2xl
-            group-focus-visible:outline-none
-            group-focus-visible:ring-2
-            group-focus-visible:ring-stone-500
-            group-focus-visible:ring-offset-4
-          "
-        >
-          <div className="aspect-square overflow-hidden rounded bg-stone-100">
-            <img
-              src={legend.image_url}
-              alt={legend.title}
-              className="
-                h-full
-                w-full
-                object-cover
-                transition-all
-                duration-700
-                group-hover:scale-105
-              "
-            />
           </div>
 
-          <h2 className="mt-3 truncate px-2 text-sm font-medium text-stone-700">
-            {legend.title}
-          </h2>
-        </article>
-      </Link>
-    ))}
-  </section>
-)}  
+          {loading && (
+            <p className="text-center italic text-stone-500">
+              🌿 Preparing the Gallery...
+            </p>
+          )}
+
+          {errorMessage && (
+            <p
+              role="alert"
+              className="text-center text-red-700"
+            >
+              {errorMessage}
+            </p>
+          )}
+
+          {!loading &&
+            !errorMessage &&
+            featuredArtwork.length === 0 && (
+              <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
+                <p className="text-3xl">🖼️</p>
+
+                <p className="mt-4 text-stone-500">
+                  The Gallery is waiting for its first selection.
+                </p>
+              </div>
+            )}
+
+          {!loading &&
+            !errorMessage &&
+            featuredArtwork.length > 0 && (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {featuredArtwork.map((artwork) => {
+                  const studio =
+                    getStudio(artwork.studio_slug);
+
+                  return (
+                    <Link
+                      key={artwork.id}
+                      href={`/studios/${artwork.studio_slug}/artwork/${artwork.id}`}
+                      className="
+                        block
+                        overflow-hidden
+                        rounded-xl
+                        bg-white
+                        p-3
+                        pb-6
+                        shadow-lg
+                        transition-all
+                        duration-300
+                        hover:-translate-y-1
+                        hover:shadow-2xl
+                      "
+                    >
+                      <div className="overflow-hidden rounded bg-stone-100">
+                        <img
+                          src={artwork.image_url}
+                          alt={artwork.title}
+                          className="aspect-square w-full object-cover transition-transform duration-700 hover:scale-105"
+                        />
+                      </div>
+
+                      <div className="px-2 pt-4">
+                        <h3 className="text-lg font-medium text-stone-800">
+                          {artwork.title}
+                        </h3>
+
+                        {artwork.category && (
+                          <p className="mt-1 text-xs uppercase tracking-wider text-stone-400">
+                            {artwork.category}
+                          </p>
+                        )}
+
+                        {artwork.description && (
+                          <p className="mt-3 text-sm leading-6 text-stone-500">
+                            {artwork.description}
+                          </p>
+                        )}
+
+                        <p className="mt-5 text-xs text-stone-400">
+                          From{" "}
+                          {studio?.name ??
+                            artwork.studio_slug}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+        </section>
+
+        <footer className="pt-6 text-center text-sm italic text-stone-400">
+          An idea grown at Studio Nebari.
+        </footer>
+
       </div>
     </main>
   );
