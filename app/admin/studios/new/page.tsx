@@ -37,15 +37,29 @@ export default function NewStudioPage() {
 
     const finalSlug = cleanSlug(slug);
 
-    if (!name.trim()) {
-      setErrorMessage("Please give the Studio a name.");
-      return;
-    }
+   if (!name.trim()) {
+  setErrorMessage("Please give the Studio a name.");
+  return;
+}
 
-    if (!owner.trim()) {
-      setErrorMessage("Please add the owner’s name.");
-      return;
-    }
+if (!owner.trim()) {
+  setErrorMessage("Please add the owner’s name.");
+  return;
+}
+
+if (!ownerEmail.trim()) {
+  setErrorMessage(
+    "Please add the owner’s email address.",
+  );
+  return;
+}
+
+if (!finalSlug) {
+  setErrorMessage(
+    "Please choose a Studio address.",
+  );
+  return;
+}
 
 
 <div>
@@ -183,12 +197,7 @@ if (!inviteResponse.ok) {
         <form
           onSubmit={handleSubmit}
           className="space-y-6 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm"
-        >if (!ownerEmail.trim()) {
-  setErrorMessage(
-    "Please add the owner’s email address.",
-  );
-  return;
-}
+        
 
           <div>
             <label
