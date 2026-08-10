@@ -163,22 +163,6 @@ export default function AccountPage() {
               Open My Studio
             </Link>
 
-
-
-
-
-          )}
-{/* TEMPORARY DEBUG */}
-<p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
-  DEBUG — studio: {membership?.studio_slug ?? "none"} · role:{" "}
-  {membership?.role ?? "none"}
-</p>
-
-
-
-
-
-
           <Link
             href="/update-password"
             className="flex w-full items-center justify-center rounded-full border border-stone-300 px-8 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100 active:scale-[0.98]"
