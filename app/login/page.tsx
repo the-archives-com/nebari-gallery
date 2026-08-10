@@ -50,7 +50,7 @@ export default function LoginPage() {
           </h1>
 
           <p className="text-stone-600">
-            Open your Edabari Studio.
+            Open your Nebari Studio.
           </p>
         </header>
 
@@ -133,7 +133,7 @@ export default function LoginPage() {
             href="/"
             className="text-sm text-stone-500 hover:text-stone-800"
           >
-            ← Edabari Studio
+            ← Nebari Studio
           </Link>
         </div>
 

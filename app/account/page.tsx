@@ -162,7 +162,22 @@ export default function AccountPage() {
             >
               Open My Studio
             </Link>
+
+
+
+
+
           )}
+{/* TEMPORARY DEBUG */}
+<p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+  DEBUG — studio: {membership?.studio_slug ?? "none"} · role:{" "}
+  {membership?.role ?? "none"}
+</p>
+
+
+
+
+
 
           <Link
             href="/update-password"
