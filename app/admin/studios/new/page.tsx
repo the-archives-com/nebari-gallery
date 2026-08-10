@@ -8,8 +8,8 @@ import { supabase } from "../../../../lib/supabase";
 
 export default function NewStudioPage() {
   const router = useRouter();
+
   const [ownerEmail, setOwnerEmail] = useState("");
-  
   const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
   const [owner, setOwner] = useState("");
@@ -37,55 +37,26 @@ export default function NewStudioPage() {
 
     const finalSlug = cleanSlug(slug);
 
-   if (!name.trim()) {
-  setErrorMessage("Please give the Studio a name.");
-  return;
-}
-
-if (!owner.trim()) {
-  setErrorMessage("Please add the owner’s name.");
-  return;
-}
-
-if (!ownerEmail.trim()) {
-  setErrorMessage(
-    "Please add the owner’s email address.",
-  );
-  return;
-}
-
-if (!finalSlug) {
-  setErrorMessage(
-    "Please choose a Studio address.",
-  );
-  return;
-}
-
-
-<div>
-  <label
-    htmlFor="owner-email"
-    className="block text-sm font-medium text-stone-700"
-  >
-    Owner email
-  </label>
-
-  <input
-    id="owner-email"
-    type="email"
-    value={ownerEmail}
-    onChange={(event) =>
-      setOwnerEmail(event.target.value)
+    if (!name.trim()) {
+      setErrorMessage(
+        "Please give the Studio a name.",
+      );
+      return;
     }
-    placeholder="artist@example.com"
-    className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
-  />
 
-  <p className="mt-2 text-xs text-stone-400">
-    We’ll send their Nebari invitation here.
-  </p>
-</div>
+    if (!owner.trim()) {
+      setErrorMessage(
+        "Please add the owner’s name.",
+      );
+      return;
+    }
 
+    if (!ownerEmail.trim()) {
+      setErrorMessage(
+        "Please add the owner’s email address.",
+      );
+      return;
+    }
 
     if (!finalSlug) {
       setErrorMessage(
@@ -131,47 +102,49 @@ if (!finalSlug) {
       setSaving(false);
       return;
     }
-const {
-  data: { session },
-} = await supabase.auth.getSession();
 
-if (!session?.access_token) {
-  setErrorMessage(
-    "Your Studio was created, but your login could not be verified to send the invitation.",
-  );
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  setSaving(false);
-  return;
-}
+    if (!session?.access_token) {
+      setErrorMessage(
+        "Your Studio was created, but your login could not be verified to send the invitation.",
+      );
 
-const inviteResponse = await fetch(
-  "/api/admin/invite-studio-owner",
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization:
-        `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({
-      email: ownerEmail.trim(),
-      ownerName: owner.trim(),
-    }),
-  },
-);
+      setSaving(false);
+      return;
+    }
 
-const inviteResult =
-  await inviteResponse.json();
+    const inviteResponse = await fetch(
+      "/api/admin/invite-studio-owner",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization:
+            `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          email: ownerEmail.trim(),
+          ownerName: owner.trim(),
+        }),
+      },
+    );
 
-if (!inviteResponse.ok) {
-  setErrorMessage(
-    `The Studio was created, but the invitation could not be sent: ${inviteResult.error ?? "Unknown error"}`,
-  );
+    const inviteResult =
+      await inviteResponse.json();
 
-  setSaving(false);
-  return;
-}
+    if (!inviteResponse.ok) {
+      setErrorMessage(
+        `The Studio was created, but the invitation could not be sent: ${
+          inviteResult.error ?? "Unknown error"
+        }`,
+      );
 
+      setSaving(false);
+      return;
+    }
 
     router.push("/admin/studios");
     router.refresh();
@@ -197,7 +170,7 @@ if (!inviteResponse.ok) {
         <form
           onSubmit={handleSubmit}
           className="space-y-6 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm"
-        
+        >
 
           <div>
             <label
@@ -216,6 +189,30 @@ if (!inviteResponse.ok) {
               placeholder="Heather"
               className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
             />
+          </div>
+
+          <div>
+            <label
+              htmlFor="owner-email"
+              className="block text-sm font-medium text-stone-700"
+            >
+              Owner email
+            </label>
+
+            <input
+              id="owner-email"
+              type="email"
+              value={ownerEmail}
+              onChange={(event) =>
+                setOwnerEmail(event.target.value)
+              }
+              placeholder="artist@example.com"
+              className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
+            />
+
+            <p className="mt-2 text-xs text-stone-400">
+              We’ll send their Nebari invitation here.
+            </p>
           </div>
 
           <div>
@@ -249,15 +246,16 @@ if (!inviteResponse.ok) {
               id="slug"
               value={slug}
               onChange={(event) =>
-                setSlug(cleanSlug(event.target.value))
+                setSlug(
+                  cleanSlug(event.target.value),
+                )
               }
               placeholder="heather"
               className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
             />
 
             <p className="mt-2 text-xs text-stone-400">
-              This becomes:
-              {" "}
+              This becomes:{" "}
               /studios/{slug || "studio-name"}
             </p>
           </div>
@@ -362,7 +360,7 @@ if (!inviteResponse.ok) {
             className="flex w-full items-center justify-center rounded-full bg-stone-800 px-8 py-3 text-sm text-stone-50 transition-all hover:bg-stone-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving
-              ? ""Creating Studio & Sending Invitation..."
+              ? "Creating Studio & Sending Invitation..."
               : "Create Studio & Send Invitation"}
           </button>
 
@@ -378,9 +376,6 @@ if (!inviteResponse.ok) {
         </footer>
 
       </div>
-      router.push("/admin/studios");
-router.refresh();
-
     </main>
   );
 }
