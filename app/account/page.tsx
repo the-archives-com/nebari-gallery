@@ -23,9 +23,20 @@ export default function AccountPage() {
 
   useEffect(() => {
     async function loadAccount() {
+      setLoading(true);
+      setMessage("");
+
       const {
         data: { user },
+        error: userError,
       } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error(
+          "Could not load signed-in user:",
+          userError,
+        );
+      }
 
       if (!user) {
         router.replace("/login");
@@ -38,7 +49,7 @@ export default function AccountPage() {
         .from("studio_members")
         .select("studio_slug, role")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error(
@@ -46,6 +57,15 @@ export default function AccountPage() {
           error,
         );
 
+        setMessage(
+          "Your account is active, but we could not load your Studio.",
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      if (!data) {
         setMessage(
           "Your login is active, but no Studio is linked to this account yet.",
         );
@@ -68,6 +88,13 @@ export default function AccountPage() {
     router.refresh();
   }
 
+  /*
+   * Studio Nebari is currently the administration Studio.
+   * Other Studio owners will not see the administration section.
+   */
+  const isNebariAdmin =
+    membership?.studio_slug === "nebari";
+
   if (loading) {
     return (
       <main className="min-h-screen bg-stone-50 px-6 py-16">
@@ -82,17 +109,21 @@ export default function AccountPage() {
     <main className="min-h-screen bg-stone-50 px-6 py-16">
       <div className="mx-auto max-w-lg space-y-10">
 
+        {/* PAGE HEADER */}
+
         <header className="space-y-4 text-center">
           <p className="text-4xl">🍁</p>
 
-          <h1 className="text-4xl font-light tracking-wide">
+          <h1 className="text-4xl font-light tracking-wide text-stone-800">
             My Account
           </h1>
 
           <p className="leading-7 text-stone-600">
-            Your Edabari Studio account.
+            Your Nebari Gallery account.
           </p>
         </header>
+
+        {/* ACCOUNT CARD */}
 
         <section className="space-y-6 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
 
@@ -101,7 +132,7 @@ export default function AccountPage() {
               Signed in as
             </p>
 
-            <p className="mt-2 text-stone-700">
+            <p className="mt-2 break-words text-stone-700">
               {email}
             </p>
           </div>
@@ -135,7 +166,7 @@ export default function AccountPage() {
 
           <Link
             href="/update-password"
-            className="flex w-full items-center justify-center rounded-full border border-stone-300 px-8 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100"
+            className="flex w-full items-center justify-center rounded-full border border-stone-300 px-8 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100 active:scale-[0.98]"
           >
             🔑 Change Password
           </Link>
@@ -143,13 +174,45 @@ export default function AccountPage() {
           <button
             type="button"
             onClick={handleSignOut}
-            className="w-full rounded-full border border-stone-300 px-8 py-3 text-sm text-stone-500 transition-all hover:border-stone-400 hover:bg-stone-50 hover:text-stone-800"
+            className="w-full rounded-full border border-stone-300 px-8 py-3 text-sm text-stone-500 transition-all hover:border-stone-400 hover:bg-stone-50 hover:text-stone-800 active:scale-[0.98]"
           >
             Sign Out
           </button>
         </section>
 
-        <div className="flex justify-center gap-4 text-xs text-stone-400">
+        {/* NEBARI ADMINISTRATION */}
+
+        {isNebariAdmin && (
+          <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
+
+            <div className="text-center">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-400">
+                Nebari Administration
+              </p>
+
+              <h2 className="mt-3 text-2xl font-light text-stone-800">
+                A quiet bit behind the Gallery.
+              </h2>
+
+              <p className="mt-3 text-sm leading-6 text-stone-500">
+                Create Studios and look after the people
+                who use them.
+              </p>
+            </div>
+
+            <Link
+              href="/admin/studios"
+              className="flex w-full items-center justify-center rounded-full border border-stone-300 px-8 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100 active:scale-[0.98]"
+            >
+              Manage Studios →
+            </Link>
+
+          </section>
+        )}
+
+        {/* FOOTER */}
+
+        <footer className="flex justify-center gap-4 text-xs text-stone-400">
           <Link
             href="/privacy"
             className="transition-colors hover:text-stone-700"
@@ -172,9 +235,9 @@ export default function AccountPage() {
             href="/"
             className="transition-colors hover:text-stone-700"
           >
-            Edabari Studio
+            Nebari Gallery
           </Link>
-        </div>
+        </footer>
 
       </div>
     </main>
