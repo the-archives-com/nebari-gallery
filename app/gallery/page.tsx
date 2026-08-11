@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -22,6 +23,19 @@ type StudioNameMap = {
   [slug: string]: string;
 };
 
+type Filter =
+  | "All Work"
+  | "Photography"
+  | "Artwork"
+  | "Works in Progress";
+
+const filters: Filter[] = [
+  "All Work",
+  "Photography",
+  "Artwork",
+  "Works in Progress",
+];
+
 export default function GalleryPage() {
   const [
     featuredArtwork,
@@ -40,6 +54,11 @@ export default function GalleryPage() {
     errorMessage,
     setErrorMessage,
   ] = useState("");
+
+  const [
+    activeFilter,
+    setActiveFilter,
+  ] = useState<Filter>("All Work");
 
   useEffect(() => {
     async function loadGallery() {
@@ -89,8 +108,7 @@ export default function GalleryPage() {
         );
       }
 
-      const names: StudioNameMap =
-        {};
+      const names: StudioNameMap = {};
 
       for (
         const studio of
@@ -112,70 +130,148 @@ export default function GalleryPage() {
     loadGallery();
   }, []);
 
+  const visibleArtwork =
+    useMemo(() => {
+      if (
+        activeFilter ===
+        "All Work"
+      ) {
+        return featuredArtwork;
+      }
+
+      return featuredArtwork.filter(
+        (artwork) =>
+          artwork.category ===
+          activeFilter,
+      );
+    }, [
+      activeFilter,
+      featuredArtwork,
+    ]);
+
   return (
-    <main className="min-h-screen bg-stone-50 px-6 py-16">
-      <div className="mx-auto max-w-6xl space-y-14">
+    <main className="min-h-screen bg-background text-foreground">
 
-        <header className="space-y-4 text-center">
-          <p className="text-3xl">
-            🌿
-          </p>
+      {/* TOP BRAND BAR */}
 
-          <h1 className="text-4xl font-light tracking-wide sm:text-6xl">
-            Nebari Gallery
-          </h1>
+      <div className="border-b border-nebari-border bg-nebari-surface/75">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
 
-          <p className="mx-auto max-w-2xl text-stone-600">
-            A shared gallery of creative work
-            from personal Studios.
-          </p>
-        </header>
-
-        <nav className="mx-auto grid w-full max-w-2xl gap-3 sm:grid-cols-3">
           <Link
             href="/"
-            className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100"
+            className="nebari-brand text-sm font-medium text-nebari-ink"
           >
-            Home
+            Studio Nebari
           </Link>
 
-          <Link
-            href="/gallery"
-            aria-current="page"
-            className="flex min-h-12 items-center justify-center rounded-full bg-stone-800 px-5 py-3 text-sm text-stone-50"
-          >
+          <nav className="flex items-center gap-7 text-xs font-medium uppercase tracking-[0.14em]">
+
+            <Link
+              href="/"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Home
+            </Link>
+
+            <Link
+              href="/gallery"
+              aria-current="page"
+              className="border-b-2 border-nebari-green pb-2 text-nebari-green"
+            >
+              Gallery
+            </Link>
+
+            <Link
+              href="/studios"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Studios
+            </Link>
+
+          </nav>
+
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+
+        {/* HEADER */}
+
+        <header className="mx-auto max-w-2xl text-center">
+
+          <p className="nebari-brand text-xs text-nebari-maple">
+            Studio Nebari
+          </p>
+
+          <h1 className="nebari-serif mt-5 text-5xl font-medium tracking-tight text-nebari-ink sm:text-6xl">
             Gallery
-          </Link>
+          </h1>
 
-          <Link
-            href="/studios"
-            className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100"
-          >
-            Studios
-          </Link>
-        </nav>
-
-        <section className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-3xl font-light text-stone-800">
-              The Gallery
-            </h2>
-
-            <p className="mt-2 text-sm text-stone-500">
-              Selected work from across the neighbourhood.
-            </p>
+          <div className="mx-auto mt-5 flex items-center justify-center gap-3">
+            <span className="h-px w-12 bg-nebari-maple/40" />
+            <span className="text-sm text-nebari-maple">
+              ◆
+            </span>
+            <span className="h-px w-12 bg-nebari-maple/40" />
           </div>
 
+          <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-nebari-muted">
+            Selected work from personal Studios.
+          </p>
+
+        </header>
+
+        {/* FILTERS */}
+
+        <div className="mt-12 border-b border-nebari-border">
+
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
+
+            {filters.map(
+              (filter) => {
+                const active =
+                  activeFilter ===
+                  filter;
+
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() =>
+                      setActiveFilter(
+                        filter,
+                      )
+                    }
+                    className={`border-b-2 pb-3 text-xs font-medium uppercase tracking-[0.14em] transition-colors ${
+                      active
+                        ? "border-nebari-green text-nebari-green"
+                        : "border-transparent text-nebari-muted hover:text-nebari-green"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                );
+              },
+            )}
+
+          </div>
+
+        </div>
+
+        {/* GALLERY */}
+
+        <section className="mt-10">
+
           {loading && (
-            <p className="text-center italic text-stone-500">
-              🌿 Preparing the Gallery...
+            <p className="text-center italic text-nebari-muted">
+              Preparing the Gallery...
             </p>
           )}
 
           {errorMessage && (
             <p
               role="alert"
-              className="text-center text-red-700"
+              className="rounded-2xl border border-nebari-maple/20 bg-nebari-surface p-5 text-center text-sm text-nebari-maple"
             >
               {errorMessage}
             </p>
@@ -183,33 +279,37 @@ export default function GalleryPage() {
 
           {!loading &&
             !errorMessage &&
-            featuredArtwork.length ===
+            visibleArtwork.length ===
               0 && (
-              <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-                <p className="text-3xl">
-                  🖼️
+              <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-nebari-border bg-nebari-surface p-10 text-center">
+
+                <p className="nebari-serif text-2xl text-nebari-ink">
+                  No work here yet.
                 </p>
 
-                <p className="mt-4 text-stone-500">
-                  The Gallery is waiting
-                  for its first selection.
+                <p className="mt-3 text-sm leading-6 text-nebari-muted">
+                  The walls are waiting
+                  for their first piece.
                 </p>
+
               </div>
             )}
 
           {!loading &&
             !errorMessage &&
-            featuredArtwork.length >
+            visibleArtwork.length >
               0 && (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {featuredArtwork.map(
+              <div className="grid gap-7 sm:grid-cols-2">
+
+                {visibleArtwork.map(
                   (artwork) => (
                     <Link
                       key={artwork.id}
                       href={`/studios/${artwork.studio_slug}/artwork/${artwork.id}`}
-                      className="block overflow-hidden rounded-xl bg-white p-3 pb-6 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+                      className="group overflow-hidden rounded-2xl border border-nebari-border bg-nebari-surface shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                     >
-                      <div className="overflow-hidden rounded bg-stone-100">
+
+                      <div className="overflow-hidden bg-nebari-paper/40">
                         <img
                           src={
                             artwork.image_url
@@ -217,34 +317,42 @@ export default function GalleryPage() {
                           alt={
                             artwork.title
                           }
-                          className="aspect-square w-full object-cover transition-transform duration-700 hover:scale-105"
+                          className="aspect-[4/3] w-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
                         />
                       </div>
 
-                      <div className="px-2 pt-4">
-                        <h3 className="text-lg font-medium text-stone-800">
-                          {
-                            artwork.title
-                          }
-                        </h3>
+                      <div className="space-y-3 p-5">
 
-                        {artwork.category && (
-                          <p className="mt-1 text-xs uppercase tracking-wider text-stone-400">
-                            {
-                              artwork.category
-                            }
-                          </p>
-                        )}
+                        <div className="flex items-start justify-between gap-4">
+
+                          <div className="min-w-0">
+                            <h2 className="nebari-serif truncate text-2xl font-medium text-nebari-ink">
+                              {
+                                artwork.title
+                              }
+                            </h2>
+
+                            <p className="mt-1 text-xs uppercase tracking-[0.14em] text-nebari-green">
+                              {artwork.category ??
+                                "Selected Work"}
+                            </p>
+                          </div>
+
+                          <span className="text-lg text-nebari-muted transition-colors group-hover:text-nebari-maple">
+                            ☆
+                          </span>
+
+                        </div>
 
                         {artwork.description && (
-                          <p className="mt-3 text-sm leading-6 text-stone-500">
+                          <p className="line-clamp-2 text-sm leading-6 text-nebari-muted">
                             {
                               artwork.description
                             }
                           </p>
                         )}
 
-                        <p className="mt-5 text-xs text-stone-400">
+                        <p className="pt-1 text-xs text-nebari-muted">
                           From{" "}
                           {studioNames[
                             artwork
@@ -253,19 +361,42 @@ export default function GalleryPage() {
                             artwork
                               .studio_slug}
                         </p>
+
                       </div>
+
                     </Link>
                   ),
                 )}
+
               </div>
             )}
+
         </section>
 
-        <footer className="pt-6 text-center text-sm italic text-stone-400">
-          An idea grown at Studio Nebari.
-        </footer>
-
       </div>
+
+      {/* DARK TIMBER-INSPIRED FOOTER */}
+
+      <footer className="border-t border-[#2b211c] bg-[#3b2f2a]">
+        <div className="mx-auto max-w-6xl px-6 py-10 text-center">
+
+          <div className="mx-auto mb-4 flex items-center justify-center gap-3">
+            <span className="h-px w-12 bg-[#6b1d1d]" />
+
+            <span className="text-[#6b1d1d]">
+              ◆
+            </span>
+
+            <span className="h-px w-12 bg-[#6b1d1d]" />
+          </div>
+
+          <p className="nebari-brand text-xs text-[#e8e1d5]">
+            Roots first. Growth second.
+          </p>
+
+        </div>
+      </footer>
+
     </main>
   );
 }

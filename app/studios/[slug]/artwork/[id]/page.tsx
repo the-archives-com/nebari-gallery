@@ -30,7 +30,7 @@ type Artwork = {
   image_url: string;
   storage_path: string | null;
   category: string | null;
-  gallery_status: string;
+  gallery_status: string | null;
 };
 
 const collections = [
@@ -56,6 +56,9 @@ export default function ArtworkPage() {
   const [loading, setLoading] =
     useState(true);
 
+  const [isOwner, setIsOwner] =
+    useState(false);
+
   const [editing, setEditing] =
     useState(false);
 
@@ -80,10 +83,13 @@ export default function ArtworkPage() {
   useEffect(() => {
     async function loadPage() {
       setLoading(true);
+      setIsOwner(false);
+      setEditing(false);
 
       const [
         studioResult,
         artworkResult,
+        userResult,
       ] = await Promise.all([
         supabase
           .from("studios")
@@ -105,6 +111,8 @@ export default function ArtworkPage() {
             params.slug,
           )
           .maybeSingle(),
+
+        supabase.auth.getUser(),
       ]);
 
       if (studioResult.error) {
@@ -146,6 +154,36 @@ export default function ArtworkPage() {
         );
       }
 
+      const user =
+        userResult.data.user;
+
+      if (user) {
+        const {
+          data: membership,
+          error: membershipError,
+        } = await supabase
+          .from("studio_members")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq(
+            "studio_slug",
+            params.slug,
+          )
+          .eq("role", "owner")
+          .maybeSingle();
+
+        if (membershipError) {
+          console.error(
+            "Could not check Studio ownership:",
+            membershipError,
+          );
+        }
+
+        setIsOwner(
+          Boolean(membership),
+        );
+      }
+
       setLoading(false);
     }
 
@@ -153,7 +191,7 @@ export default function ArtworkPage() {
   }, [params.id, params.slug]);
 
   async function handleUpdateDetails() {
-    if (!artwork) {
+    if (!artwork || !isOwner) {
       return;
     }
 
@@ -180,7 +218,11 @@ export default function ArtworkPage() {
           category:
             editCategory || null,
         })
-        .eq("id", artwork.id);
+        .eq("id", artwork.id)
+        .eq(
+          "studio_slug",
+          params.slug,
+        );
 
     if (error) {
       console.error(
@@ -217,7 +259,8 @@ export default function ArtworkPage() {
   async function handleTakeDown() {
     if (
       !artwork ||
-      !studio
+      !studio ||
+      !isOwner
     ) {
       return;
     }
@@ -263,7 +306,11 @@ export default function ArtworkPage() {
     } = await supabase
       .from("studio_artworks")
       .delete()
-      .eq("id", artwork.id);
+      .eq("id", artwork.id)
+      .eq(
+        "studio_slug",
+        params.slug,
+      );
 
     if (databaseError) {
       console.error(
@@ -286,19 +333,30 @@ export default function ArtworkPage() {
     router.refresh();
   }
 
-  async function handleGalleryFeature() {
-    if (!artwork) {
+  /*
+   * Submit this piece for consideration
+   * in the shared Nebari Gallery.
+   *
+   * This does NOT publish it.
+   */
+  async function handleGallerySubmission() {
+    if (!artwork || !isOwner) {
       return;
     }
 
-    const wasFeatured =
+    if (
       artwork.gallery_status ===
-      "featured";
+      "pending"
+    ) {
+      return;
+    }
 
-    const newStatus =
-      wasFeatured
-        ? "not_featured"
-        : "featured";
+    if (
+      artwork.gallery_status ===
+      "featured"
+    ) {
+      return;
+    }
 
     setSaving(true);
 
@@ -307,21 +365,25 @@ export default function ArtworkPage() {
         .from("studio_artworks")
         .update({
           gallery_status:
-            newStatus,
+            "pending",
         })
         .eq("id", artwork.id)
+        .eq(
+          "studio_slug",
+          params.slug,
+        )
         .select(
           "id, gallery_status",
         );
 
     if (result.error) {
       console.error(
-        "Could not change Gallery status:",
+        "Could not submit artwork to Gallery:",
         result.error,
       );
 
       alert(
-        `Could not change Gallery status: ${result.error.message}`,
+        `Could not submit to the Gallery: ${result.error.message}`,
       );
 
       setSaving(false);
@@ -333,7 +395,7 @@ export default function ArtworkPage() {
       result.data.length === 0
     ) {
       alert(
-        "The Gallery status was not changed. Your account may not have permission to update this artwork.",
+        "The Gallery submission was not saved. Your account may not have permission to update this artwork.",
       );
 
       setSaving(false);
@@ -348,87 +410,134 @@ export default function ArtworkPage() {
     });
 
     setSaving(false);
-
-    if (wasFeatured) {
-      router.replace(
-        "/gallery",
-      );
-    }
   }
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-stone-50 px-6 py-16">
-        <p className="text-center italic text-stone-500">
-          🌿 Preparing the artwork...
+      <main className="min-h-screen bg-background px-6 py-16 text-foreground">
+
+        <p className="text-center italic text-nebari-muted">
+          Preparing the artwork...
         </p>
+
       </main>
     );
   }
 
   if (!studio) {
     return (
-      <main className="min-h-screen bg-stone-50 px-6 py-16">
-        <div className="mx-auto max-w-xl text-center">
-          <p className="text-3xl">
-            🌱
-          </p>
+      <main className="min-h-screen bg-background px-6 py-20 text-foreground">
 
-          <h1 className="mt-4 text-3xl font-light">
+        <div className="mx-auto max-w-xl text-center">
+
+          <h1 className="nebari-serif text-4xl font-medium text-nebari-ink">
             Studio not found.
           </h1>
 
           <Link
             href="/studios"
-            className="mt-6 inline-block text-stone-600 hover:text-stone-900"
+            className="mt-7 inline-block text-sm text-nebari-green transition-colors hover:text-nebari-maple"
           >
             ← Return to Studios
           </Link>
+
         </div>
+
       </main>
     );
   }
 
   if (!artwork) {
     return (
-      <main className="min-h-screen bg-stone-50 px-6 py-16">
-        <div className="mx-auto max-w-xl text-center">
-          <p className="text-3xl">
-            🖼️
-          </p>
+      <main className="min-h-screen bg-background px-6 py-20 text-foreground">
 
-          <h1 className="mt-4 text-3xl font-light">
-            This piece isn&apos;t on
-            the wall.
+        <div className="mx-auto max-w-xl text-center">
+
+          <h1 className="nebari-serif text-4xl font-medium text-nebari-ink">
+            This piece isn&apos;t on the wall.
           </h1>
 
           <Link
             href={`/studios/${studio.slug}`}
-            className="mt-6 inline-block text-stone-600 hover:text-stone-900"
+            className="mt-7 inline-block text-sm text-nebari-green transition-colors hover:text-nebari-maple"
           >
             ← Return to {studio.name}
           </Link>
+
         </div>
+
       </main>
     );
   }
 
+  const galleryStatus =
+    artwork.gallery_status ??
+    "not_featured";
+
   return (
-    <main className="min-h-screen bg-stone-50 px-6 py-12 sm:py-16">
-      <div className="mx-auto max-w-4xl space-y-10">
+    <main className="min-h-screen bg-background text-foreground">
+
+      {/* TOP BRAND BAR */}
+
+      <div className="border-b border-nebari-border bg-nebari-surface/70">
+
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+
+          <Link
+            href="/"
+            className="nebari-brand text-sm font-medium text-nebari-ink"
+          >
+            Studio Nebari
+          </Link>
+
+          <nav className="flex items-center gap-7 text-xs font-medium uppercase tracking-[0.14em]">
+
+            <Link
+              href="/"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Home
+            </Link>
+
+            <Link
+              href="/gallery"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Gallery
+            </Link>
+
+            <Link
+              href="/studios"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Studios
+            </Link>
+
+          </nav>
+
+        </div>
+
+      </div>
+
+      <div className="mx-auto max-w-5xl px-6 py-12 sm:py-16">
+
+        {/* RETURN TO STUDIO */}
 
         <nav>
           <Link
             href={`/studios/${studio.slug}`}
-            className="text-sm text-stone-500 transition-colors hover:text-stone-900"
+            className="text-sm text-nebari-muted transition-colors hover:text-nebari-green"
           >
             ← {studio.name}
           </Link>
         </nav>
 
-        <article className="overflow-hidden rounded-2xl bg-white shadow-xl">
+        {/* ARTWORK */}
 
-          <div className="bg-stone-100 p-3 sm:p-5">
+        <article className="mt-8 overflow-hidden rounded-2xl border border-nebari-border bg-nebari-surface shadow-xl">
+
+          <div className="bg-nebari-paper/40 p-3 sm:p-5">
+
             <img
               src={
                 artwork.image_url
@@ -438,41 +547,45 @@ export default function ArtworkPage() {
               }
               className="mx-auto max-h-[75vh] w-full rounded-xl object-contain"
             />
+
           </div>
 
           <div className="space-y-5 p-6 sm:p-10">
 
             {!editing ? (
               <>
+
                 <header>
-                  <h1 className="text-3xl font-light tracking-wide text-stone-900 sm:text-4xl">
+
+                  <h1 className="nebari-serif text-4xl font-medium tracking-tight text-nebari-ink sm:text-5xl">
                     {artwork.title}
                   </h1>
 
                   {artwork.category && (
-                    <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-400">
-                      {
-                        artwork.category
-                      }
+                    <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.18em] text-nebari-green">
+                      {artwork.category}
                     </p>
                   )}
+
                 </header>
 
                 {artwork.description && (
-                  <p className="max-w-2xl whitespace-pre-wrap text-base leading-8 text-stone-600">
+                  <p className="max-w-2xl whitespace-pre-wrap text-base leading-8 text-nebari-muted">
                     {
                       artwork.description
                     }
                   </p>
                 )}
+
               </>
-            ) : (
+            ) : isOwner ? (
               <div className="space-y-5">
 
                 <div>
+
                   <label
                     htmlFor="edit-title"
-                    className="block text-sm font-medium text-stone-700"
+                    className="block text-sm font-medium text-nebari-ink"
                   >
                     Title
                   </label>
@@ -486,14 +599,16 @@ export default function ArtworkPage() {
                           .value,
                       )
                     }
-                    className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                    className="mt-2 w-full rounded-xl border border-nebari-border bg-background px-4 py-3 text-nebari-ink focus:outline-none focus:ring-2 focus:ring-nebari-sage"
                   />
+
                 </div>
 
                 <div>
+
                   <label
                     htmlFor="edit-description"
-                    className="block text-sm font-medium text-stone-700"
+                    className="block text-sm font-medium text-nebari-ink"
                   >
                     Reflection / About this piece
                   </label>
@@ -510,14 +625,16 @@ export default function ArtworkPage() {
                           .value,
                       )
                     }
-                    className="mt-2 w-full resize-y rounded-xl border border-stone-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                    className="mt-2 w-full resize-y rounded-xl border border-nebari-border bg-background px-4 py-3 text-nebari-ink focus:outline-none focus:ring-2 focus:ring-nebari-sage"
                   />
+
                 </div>
 
                 <div>
+
                   <label
                     htmlFor="edit-category"
-                    className="block text-sm font-medium text-stone-700"
+                    className="block text-sm font-medium text-nebari-ink"
                   >
                     Collection
                   </label>
@@ -533,8 +650,9 @@ export default function ArtworkPage() {
                           .value,
                       )
                     }
-                    className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3"
+                    className="mt-2 w-full rounded-xl border border-nebari-border bg-background px-4 py-3 text-nebari-ink"
                   >
+
                     <option value="">
                       Choose a collection...
                     </option>
@@ -555,10 +673,13 @@ export default function ArtworkPage() {
                         </option>
                       ),
                     )}
+
                   </select>
+
                 </div>
 
                 <div className="flex flex-wrap gap-3">
+
                   <button
                     type="button"
                     onClick={
@@ -567,7 +688,7 @@ export default function ArtworkPage() {
                     disabled={
                       saving
                     }
-                    className="rounded-full bg-stone-800 px-6 py-3 text-sm text-white hover:bg-stone-700 disabled:opacity-60"
+                    className="rounded-full bg-nebari-green px-6 py-3 text-sm text-white transition-colors hover:opacity-90 disabled:opacity-60"
                   >
                     {saving
                       ? "Saving..."
@@ -577,23 +698,22 @@ export default function ArtworkPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      setEditing(
-                        false,
-                      )
+                      setEditing(false)
                     }
                     disabled={
                       saving
                     }
-                    className="rounded-full border border-stone-300 px-6 py-3 text-sm text-stone-600 hover:bg-stone-100"
+                    className="rounded-full border border-nebari-border px-6 py-3 text-sm text-nebari-muted transition-colors hover:bg-nebari-paper/40"
                   >
                     Cancel
                   </button>
+
                 </div>
 
               </div>
-            )}
+            ) : null}
 
-            <p className="text-sm text-stone-400">
+            <p className="text-sm text-nebari-muted">
               {new Date(
                 artwork.created_at,
               ).toLocaleDateString(
@@ -607,76 +727,141 @@ export default function ArtworkPage() {
             </p>
 
           </div>
+
         </article>
 
-        <section className="rounded-2xl border border-stone-200 bg-white p-6">
+        {/* OWNER TOOLS */}
 
-          <p className="mb-5 text-center text-xs font-medium uppercase tracking-[0.2em] text-stone-400">
-            Studio Tools
-          </p>
+        {isOwner && (
+          <section className="mt-8 rounded-2xl border border-nebari-border bg-nebari-surface p-6 shadow-sm">
 
-          <div className="grid gap-3 sm:grid-cols-3">
+            <p className="mb-5 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-muted">
+              Studio Tools
+            </p>
 
-            <button
-              type="button"
-              onClick={() =>
-                setEditing(true)
-              }
-              disabled={saving}
-              className="rounded-full border border-stone-300 px-5 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100 disabled:opacity-50"
-            >
-              ✏ Update Details
-            </button>
+            <div className="grid gap-3 sm:grid-cols-3">
 
-            <button
-              type="button"
-              onClick={
-                handleTakeDown
-              }
-              disabled={saving}
-              className="rounded-full border border-stone-300 px-5 py-3 text-sm text-stone-700 transition-all hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
-            >
-              🪝 Take Down
-            </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setEditing(true)
+                }
+                disabled={saving}
+                className="rounded-full border border-nebari-border px-5 py-3 text-sm text-nebari-ink transition-all hover:border-nebari-sage hover:bg-nebari-paper/40 disabled:opacity-50"
+              >
+                Update Details
+              </button>
 
-            <button
-              type="button"
-              onClick={
-                handleGalleryFeature
-              }
-              disabled={saving}
-              className={`rounded-full px-5 py-3 text-sm transition-all disabled:opacity-50 ${
-                artwork.gallery_status ===
-                "featured"
-                  ? "border border-amber-300 bg-amber-50 text-amber-800"
-                  : "bg-stone-800 text-white hover:bg-stone-700"
-              }`}
-            >
-              {artwork.gallery_status ===
-              "featured"
-                ? "✓ Remove from Gallery"
-                : "⭐ Add to Gallery"}
-            </button>
+              <button
+                type="button"
+                onClick={
+                  handleTakeDown
+                }
+                disabled={saving}
+                className="rounded-full border border-nebari-border px-5 py-3 text-sm text-nebari-ink transition-all hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+              >
+                Take Down
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  handleGallerySubmission
+                }
+                disabled={
+                  saving ||
+                  galleryStatus ===
+                    "pending" ||
+                  galleryStatus ===
+                    "featured"
+                }
+                className={`rounded-full px-5 py-3 text-sm transition-all disabled:cursor-default ${
+                  galleryStatus ===
+                  "pending"
+                    ? "border border-nebari-sage bg-nebari-paper/50 text-nebari-green"
+                    : galleryStatus ===
+                        "featured"
+                      ? "border border-nebari-sage bg-nebari-paper/50 text-nebari-green"
+                      : "bg-nebari-green text-white hover:opacity-90"
+                }`}
+              >
+
+                {saving
+                  ? "Submitting..."
+                  : galleryStatus ===
+                      "pending"
+                    ? "Awaiting Gallery Review"
+                    : galleryStatus ===
+                        "featured"
+                      ? "Selected for Gallery"
+                      : galleryStatus ===
+                          "declined"
+                        ? "Submit Again"
+                        : "Submit to Gallery"}
+
+              </button>
+
+            </div>
+
+            {/* GALLERY STATUS */}
+
+            {galleryStatus ===
+              "pending" && (
+              <p className="mt-5 text-center text-sm leading-6 text-nebari-muted">
+                This piece has been submitted
+                for Gallery consideration.
+              </p>
+            )}
+
+            {galleryStatus ===
+              "featured" && (
+              <p className="mt-5 text-center text-sm leading-6 text-nebari-muted">
+                This piece is currently part
+                of the Nebari Gallery.
+              </p>
+            )}
+
+            {galleryStatus ===
+              "declined" && (
+              <p className="mt-5 text-center text-sm leading-6 text-nebari-muted">
+                This piece isn&apos;t currently
+                selected for the shared Gallery.
+                You&apos;re welcome to submit it
+                again.
+              </p>
+            )}
+
+          </section>
+        )}
+
+      </div>
+
+      {/* DARK TIMBER FOOTER */}
+
+      <footer className="mt-12 border-t border-[#2b211c] bg-[#3b2f2a]">
+
+        <div className="mx-auto max-w-6xl px-6 py-10 text-center">
+
+          <div className="mx-auto mb-4 flex items-center justify-center gap-3">
+
+            <span className="h-px w-12 bg-[#6b1d1d]" />
+
+            <span className="text-[#6b1d1d]">
+              ◆
+            </span>
+
+            <span className="h-px w-12 bg-[#6b1d1d]" />
 
           </div>
 
-          {artwork.gallery_status ===
-            "featured" && (
-            <p className="mt-4 text-center text-sm text-stone-500">
-              This piece is currently part
-              of the Nebari Gallery.
-            </p>
-          )}
-
-        </section>
-
-        <footer className="text-center">
-          <p className="text-sm italic text-stone-400">
-            A quiet place for meaningful work.
+          <p className="nebari-brand text-xs text-[#e8e1d5]">
+            Roots first. Growth second.
           </p>
-        </footer>
 
-      </div>
+        </div>
+
+      </footer>
+
     </main>
   );
 }

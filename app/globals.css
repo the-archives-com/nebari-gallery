@@ -1,29 +1,91 @@
 @import "tailwindcss";
 
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /*
+   * Studio Nebari
+   * Core colour palette
+   */
+
+  --nebari-green: #224a24;
+  --nebari-sage: #5f715e;
+  --nebari-paper: #e8e1d5;
+  --nebari-maple: #6b1d1d;
+  --nebari-ink: #3b2f2a;
+
+  /*
+   * Interface colours
+   */
+
+  --background: #f6f1e8;
+  --foreground: var(--nebari-ink);
+
+  --surface: #fffdf8;
+  --surface-soft: #eee7dc;
+
+  --border: #d8cec0;
+  --muted: #746b63;
+
+  --accent: var(--nebari-green);
+  --accent-soft: var(--nebari-sage);
 }
+
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --color-nebari-green: var(--nebari-green);
+  --color-nebari-sage: var(--nebari-sage);
+  --color-nebari-paper: var(--nebari-paper);
+  --color-nebari-maple: var(--nebari-maple);
+  --color-nebari-ink: var(--nebari-ink);
+
+  --color-nebari-surface: var(--surface);
+  --color-nebari-surface-soft: var(--surface-soft);
+  --color-nebari-border: var(--border);
+  --color-nebari-muted: var(--muted);
+
+  --font-sans: var(--font-nebari-sans);
+  --font-serif: var(--font-nebari-serif);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+
+html {
+  background: var(--background);
 }
+
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-nebari-sans), Arial, Helvetica, sans-serif;
 }
+
+
+/*
+ * Nebari typography
+ */
+
+.nebari-serif {
+  font-family: var(--font-nebari-serif), Georgia, serif;
+}
+
+
+/*
+ * Small brand treatment
+ */
+
+.nebari-brand {
+  font-family: var(--font-nebari-serif), Georgia, serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+
+/*
+ * Existing animations
+ */
 
 @keyframes fadeIn {
   from {
@@ -37,24 +99,11 @@ body {
   }
 }
 
+
 .fade-in {
   animation: fadeIn 1.2s ease-out;
 }
 
-@keyframes plantingProgress {
-  from {
-    transform: translateX(-100%);
-  }
-
-  to {
-    transform: translateX(0);
-  }
-}
-
-.planting-progress {
-  animation: plantingProgress 1.1s ease-out forwards;
-}
-
 
 @keyframes plantingProgress {
   from {
@@ -65,23 +114,8 @@ body {
     transform: translateX(0);
   }
 }
+
 
 .planting-progress {
   animation: plantingProgress 1.2s ease-out forwards;
 }
-
-
-@keyframes plantingProgress {
-  from {
-    transform: translateX(-100%);
-  }
-
-  to {
-    transform: translateX(0);
-  }
-}
-
-.planting-progress {
-  animation: plantingProgress 1.2s ease-out forwards;
-}
-

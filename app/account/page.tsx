@@ -89,60 +89,118 @@ export default function AccountPage() {
   }
 
   const isNebariAdmin =
-    membership?.studio_slug === "nebari";
+    membership?.studio_slug === "nebari" &&
+    membership?.role === "owner";
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-stone-50 px-6 py-16">
-        <p className="text-center italic text-stone-500">
-          🌿 Opening your Studio account...
+      <main className="min-h-screen bg-background px-6 py-16 text-foreground">
+        <p className="text-center italic text-nebari-muted">
+          Opening your Studio account...
         </p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-stone-50 px-6 py-16">
-      <div className="mx-auto max-w-lg space-y-10">
+    <main className="min-h-screen bg-background text-foreground">
 
-        <header className="space-y-4 text-center">
-          <p className="text-4xl">🍁</p>
+      {/* TOP BRAND BAR */}
 
-          <h1 className="text-4xl font-light tracking-wide text-stone-800">
+      <div className="border-b border-nebari-border bg-nebari-surface/70">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
+
+          <Link
+            href="/"
+            className="nebari-brand text-sm font-medium text-nebari-ink"
+          >
+            Studio Nebari
+          </Link>
+
+          <nav className="flex items-center gap-7 text-xs font-medium uppercase tracking-[0.14em]">
+
+            <Link
+              href="/"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Home
+            </Link>
+
+            <Link
+              href="/gallery"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Gallery
+            </Link>
+
+            <Link
+              href="/studios"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Studios
+            </Link>
+
+          </nav>
+
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-lg space-y-10 px-6 py-16">
+
+        {/* ACCOUNT HEADER */}
+
+        <header className="text-center">
+
+          <p className="nebari-brand text-xs text-nebari-maple">
+            Studio Nebari
+          </p>
+
+          <h1 className="nebari-serif mt-5 text-5xl font-medium text-nebari-ink">
             My Account
           </h1>
 
-          <p className="leading-7 text-stone-600">
-            Your Nebari Gallery account.
-          </p>
+          <div className="mx-auto mt-5 flex items-center justify-center gap-3">
+
+            <span className="h-px w-12 bg-nebari-maple/40" />
+
+            <span className="text-sm text-nebari-maple">
+              ◆
+            </span>
+
+            <span className="h-px w-12 bg-nebari-maple/40" />
+
+          </div>
+
         </header>
 
-        <section className="space-y-6 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
+        {/* ACCOUNT CARD */}
+
+        <section className="space-y-6 rounded-2xl border border-nebari-border bg-nebari-surface p-8 shadow-sm">
 
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-400">
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-muted">
               Signed in as
             </p>
 
-            <p className="mt-2 break-words text-stone-700">
+            <p className="mt-2 break-words text-nebari-ink">
               {email}
             </p>
           </div>
 
           {membership && (
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-400">
+              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-muted">
                 Studio
               </p>
 
-              <p className="mt-2 capitalize text-stone-700">
+              <p className="mt-2 capitalize text-nebari-ink">
                 {membership.studio_slug}
               </p>
             </div>
           )}
 
           {message && (
-            <p className="rounded-xl bg-stone-100 p-4 text-sm leading-6 text-stone-600">
+            <p className="rounded-xl bg-nebari-paper/50 p-4 text-sm leading-6 text-nebari-muted">
               {message}
             </p>
           )}
@@ -150,7 +208,7 @@ export default function AccountPage() {
           {membership && (
             <Link
               href={`/studios/${membership.studio_slug}`}
-              className="flex w-full items-center justify-center rounded-full bg-stone-800 px-8 py-3 text-sm text-stone-50 transition-all hover:bg-stone-700 active:scale-[0.98]"
+              className="flex w-full items-center justify-center rounded-full bg-nebari-green px-8 py-3 text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
             >
               Open My Studio
             </Link>
@@ -158,76 +216,113 @@ export default function AccountPage() {
 
           <Link
             href="/update-password"
-            className="flex w-full items-center justify-center rounded-full border border-stone-300 px-8 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100 active:scale-[0.98]"
+            className="flex w-full items-center justify-center rounded-full border border-nebari-border px-8 py-3 text-sm text-nebari-ink transition-all hover:bg-nebari-paper/40 active:scale-[0.98]"
           >
-            🔑 Change Password
+            Change Password
           </Link>
 
           <button
             type="button"
             onClick={handleSignOut}
-            className="w-full rounded-full border border-stone-300 px-8 py-3 text-sm text-stone-500 transition-all hover:border-stone-400 hover:bg-stone-50 hover:text-stone-800 active:scale-[0.98]"
+            className="w-full rounded-full border border-nebari-border px-8 py-3 text-sm text-nebari-muted transition-all hover:bg-nebari-paper/40 hover:text-nebari-ink active:scale-[0.98]"
           >
             Sign Out
           </button>
+
         </section>
 
+        {/* NEBARI ADMINISTRATION */}
+
         {isNebariAdmin && (
-          <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
+          <section className="space-y-6 rounded-2xl border border-nebari-border bg-nebari-surface p-8 shadow-sm">
 
             <div className="text-center">
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-400">
+
+              <p className="text-3xl">
+                🍁
+              </p>
+
+              <p className="mt-4 text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-maple">
                 Nebari Administration
               </p>
 
-              <h2 className="mt-3 text-2xl font-light text-stone-800">
-                A quiet bit behind the Gallery.
+              <h2 className="nebari-serif mt-3 text-3xl font-medium text-nebari-ink">
+                Behind the Gallery
               </h2>
 
-              <p className="mt-3 text-sm leading-6 text-stone-500">
-                Create Studios and look after the people
-                who use them.
+              <p className="mt-3 text-sm leading-6 text-nebari-muted">
+                Create Studios, look after people,
+                and curate the shared Gallery.
               </p>
+
             </div>
 
             <Link
               href="/admin/studios"
-              className="flex w-full items-center justify-center rounded-full border border-stone-300 px-8 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100 active:scale-[0.98]"
+              className="flex w-full items-center justify-between rounded-xl border border-nebari-border px-5 py-4 text-sm text-nebari-ink transition-all hover:border-nebari-sage hover:bg-nebari-paper/40"
             >
-              Manage Studios →
+              <span>
+                Manage Studios
+              </span>
+
+              <span>
+                →
+              </span>
+            </Link>
+
+            <Link
+              href="/admin/gallery"
+              className="flex w-full items-center justify-between rounded-xl border border-nebari-border px-5 py-4 text-sm text-nebari-ink transition-all hover:border-nebari-sage hover:bg-nebari-paper/40"
+            >
+              <span>
+                Gallery Submissions
+              </span>
+
+              <span>
+                →
+              </span>
             </Link>
 
           </section>
         )}
 
-        <footer className="flex justify-center gap-4 text-xs text-stone-400">
+        {/* FOOTER */}
+
+        <footer className="flex justify-center gap-4 text-xs text-nebari-muted">
+
           <Link
             href="/privacy"
-            className="transition-colors hover:text-stone-700"
+            className="transition-colors hover:text-nebari-green"
           >
             Privacy
           </Link>
 
-          <span aria-hidden="true">·</span>
+          <span aria-hidden="true">
+            ·
+          </span>
 
           <Link
             href="/terms"
-            className="transition-colors hover:text-stone-700"
+            className="transition-colors hover:text-nebari-green"
           >
             Terms
           </Link>
 
-          <span aria-hidden="true">·</span>
+          <span aria-hidden="true">
+            ·
+          </span>
 
           <Link
             href="/"
-            className="transition-colors hover:text-stone-700"
+            className="transition-colors hover:text-nebari-green"
           >
-            Nebari Gallery
+            Studio Nebari
           </Link>
+
         </footer>
 
       </div>
+
     </main>
   );
 }

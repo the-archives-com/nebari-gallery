@@ -94,8 +94,7 @@ export default function NewStudioPage() {
     }
 
     /*
-     * The server API now handles the complete
-     * operation:
+     * The server API handles:
      *
      * 1. Create Studio
      * 2. Invite owner
@@ -168,9 +167,6 @@ export default function NewStudioPage() {
         return;
       }
 
-      /*
-       * Everything worked.
-       */
       router.push("/admin/studios");
       router.refresh();
     } catch (error) {
@@ -187,262 +183,397 @@ export default function NewStudioPage() {
     }
   }
 
-  return (
-    <main className="min-h-screen bg-stone-50 px-6 py-16">
-      <div className="mx-auto max-w-xl space-y-10">
+  const inputClass =
+    "mt-2 w-full rounded-xl border border-nebari-border bg-background px-4 py-3 text-nebari-ink outline-none transition-all placeholder:text-nebari-muted/60 focus:border-nebari-sage focus:ring-2 focus:ring-nebari-sage/20";
 
-        <header className="space-y-4 text-center">
-          <p className="text-4xl">
-            🌿
+  const labelClass =
+    "block text-sm font-medium text-nebari-ink";
+
+  const helperClass =
+    "mt-2 text-xs leading-5 text-nebari-muted";
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+
+      {/* ADMIN BRAND BAR */}
+
+      <div className="border-b border-nebari-border bg-nebari-surface/70">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
+
+          <Link
+            href="/account"
+            className="nebari-brand text-sm font-medium text-nebari-ink"
+          >
+            Studio Nebari
+          </Link>
+
+          <nav className="flex items-center gap-7 text-xs font-medium uppercase tracking-[0.14em]">
+
+            <Link
+              href="/admin/studios"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Studios
+            </Link>
+
+            <Link
+              href="/admin/gallery"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Gallery Submissions
+            </Link>
+
+          </nav>
+
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-xl space-y-10 px-6 py-16">
+
+        {/* HEADER */}
+
+        <header className="text-center">
+
+          <p className="text-3xl">
+            🍁
           </p>
 
-          <h1 className="text-4xl font-light tracking-wide text-stone-800">
+          <p className="mt-4 text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-maple">
+            Nebari Administration
+          </p>
+
+          <h1 className="nebari-serif mt-4 text-5xl font-medium tracking-tight text-nebari-ink">
             Create a Studio
           </h1>
 
-          <p className="mx-auto max-w-md leading-7 text-stone-600">
-            Make a new little corner of Nebari
-            for someone to call their own.
+          <div className="mx-auto mt-5 flex items-center justify-center gap-3">
+
+            <span className="h-px w-12 bg-nebari-maple/40" />
+
+            <span className="text-sm text-nebari-maple">
+              ◆
+            </span>
+
+            <span className="h-px w-12 bg-nebari-maple/40" />
+
+          </div>
+
+          <p className="mx-auto mt-6 max-w-md text-sm leading-7 text-nebari-muted">
+            Open a new creative space and invite
+            its owner into Nebari.
           </p>
+
         </header>
+
+        {/* FORM */}
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-6 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm"
+          className="overflow-hidden rounded-2xl border border-nebari-border bg-nebari-surface shadow-sm"
         >
 
-          {/* OWNER NAME */}
+          {/* OWNER */}
 
-          <div>
-            <label
-              htmlFor="owner"
-              className="block text-sm font-medium text-stone-700"
-            >
-              Owner name
-            </label>
+          <section className="space-y-6 border-b border-nebari-border p-7 sm:p-8">
 
-            <input
-              id="owner"
-              value={owner}
-              onChange={(event) =>
-                setOwner(event.target.value)
-              }
-              placeholder="Heather"
-              className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
-            />
-          </div>
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-maple">
+                The Artist
+              </p>
 
-          {/* OWNER EMAIL */}
+              <h2 className="nebari-serif mt-2 text-2xl text-nebari-ink">
+                Who is this Studio for?
+              </h2>
+            </div>
 
-          <div>
-            <label
-              htmlFor="owner-email"
-              className="block text-sm font-medium text-stone-700"
-            >
-              Owner email
-            </label>
+            <div>
+              <label
+                htmlFor="owner"
+                className={labelClass}
+              >
+                Owner name
+              </label>
 
-            <input
-              id="owner-email"
-              type="email"
-              value={ownerEmail}
-              onChange={(event) =>
-                setOwnerEmail(
-                  event.target.value,
-                )
-              }
-              placeholder="artist@example.com"
-              className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
-            />
+              <input
+                id="owner"
+                value={owner}
+                onChange={(event) =>
+                  setOwner(event.target.value)
+                }
+                placeholder="Heather"
+                className={inputClass}
+              />
+            </div>
 
-            <p className="mt-2 text-xs text-stone-400">
-              We’ll send their Nebari
-              invitation here.
-            </p>
-          </div>
+            <div>
+              <label
+                htmlFor="owner-email"
+                className={labelClass}
+              >
+                Owner email
+              </label>
 
-          {/* STUDIO NAME */}
-
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-stone-700"
-            >
-              Studio name
-            </label>
-
-            <input
-              id="name"
-              value={name}
-              onChange={(event) =>
-                setName(event.target.value)
-              }
-              placeholder="Heather's Studio"
-              className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
-            />
-          </div>
-
-          {/* STUDIO SLUG */}
-
-          <div>
-            <label
-              htmlFor="slug"
-              className="block text-sm font-medium text-stone-700"
-            >
-              Studio address
-            </label>
-
-            <input
-              id="slug"
-              value={slug}
-              onChange={(event) =>
-                setSlug(
-                  cleanSlug(
+              <input
+                id="owner-email"
+                type="email"
+                value={ownerEmail}
+                onChange={(event) =>
+                  setOwnerEmail(
                     event.target.value,
-                  ),
-                )
-              }
-              placeholder="heather"
-              className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
-            />
+                  )
+                }
+                placeholder="artist@example.com"
+                className={inputClass}
+              />
 
-            <p className="mt-2 text-xs text-stone-400">
-              This becomes:{" "}
-              /studios/
-              {slug || "studio-name"}
+              <p className={helperClass}>
+                Their invitation to join Nebari
+                will be sent here.
+              </p>
+            </div>
+
+          </section>
+
+          {/* STUDIO */}
+
+          <section className="space-y-6 border-b border-nebari-border p-7 sm:p-8">
+
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-green">
+                The Studio
+              </p>
+
+              <h2 className="nebari-serif mt-2 text-2xl text-nebari-ink">
+                Give the space an identity.
+              </h2>
+            </div>
+
+            <div>
+              <label
+                htmlFor="name"
+                className={labelClass}
+              >
+                Studio name
+              </label>
+
+              <input
+                id="name"
+                value={name}
+                onChange={(event) =>
+                  setName(event.target.value)
+                }
+                placeholder="Heather's Studio"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="slug"
+                className={labelClass}
+              >
+                Studio address
+              </label>
+
+              <input
+                id="slug"
+                value={slug}
+                onChange={(event) =>
+                  setSlug(
+                    cleanSlug(
+                      event.target.value,
+                    ),
+                  )
+                }
+                placeholder="heather"
+                className={inputClass}
+              />
+
+              <p className={helperClass}>
+                nebari.com.au/studios/
+                <span className="text-nebari-green">
+                  {slug || "studio-name"}
+                </span>
+              </p>
+            </div>
+
+            <div>
+              <label
+                htmlFor="description"
+                className={labelClass}
+              >
+                About the Studio
+              </label>
+
+              <textarea
+                id="description"
+                rows={5}
+                value={description}
+                onChange={(event) =>
+                  setDescription(
+                    event.target.value,
+                  )
+                }
+                placeholder="A quiet place for colour, ideas and things worth making."
+                className={`${inputClass} resize-y`}
+              />
+            </div>
+
+          </section>
+
+          {/* DETAILS */}
+
+          <section className="space-y-6 p-7 sm:p-8">
+
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-muted">
+                Details
+              </p>
+
+              <h2 className="nebari-serif mt-2 text-2xl text-nebari-ink">
+                A couple of finishing touches.
+              </h2>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+
+              <div>
+                <label
+                  htmlFor="icon"
+                  className={labelClass}
+                >
+                  Studio symbol
+                </label>
+
+                <input
+                  id="icon"
+                  value={icon}
+                  onChange={(event) =>
+                    setIcon(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="○"
+                  className={inputClass}
+                />
+
+                <p className={helperClass}>
+                  Optional. Keep it simple.
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="colour"
+                  className={labelClass}
+                >
+                  Accent
+                </label>
+
+                <select
+                  id="colour"
+                  value={colour}
+                  onChange={(event) =>
+                    setColour(
+                      event.target.value,
+                    )
+                  }
+                  className={inputClass}
+                >
+                  <option value="stone">
+                    Stone
+                  </option>
+
+                  <option value="green">
+                    Green
+                  </option>
+
+                  <option value="amber">
+                    Amber
+                  </option>
+
+                  <option value="rose">
+                    Rose
+                  </option>
+
+                  <option value="blue">
+                    Blue
+                  </option>
+
+                  <option value="violet">
+                    Violet
+                  </option>
+                </select>
+              </div>
+
+            </div>
+
+            {errorMessage && (
+              <p
+                role="alert"
+                className="rounded-xl border border-nebari-maple/20 bg-nebari-paper/40 p-4 text-sm leading-6 text-nebari-maple"
+              >
+                {errorMessage}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex w-full items-center justify-center rounded-full bg-nebari-green px-8 py-3.5 text-sm text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving
+                ? "Creating Studio & Sending Invitation..."
+                : "Create Studio & Send Invitation"}
+            </button>
+
+            <p className="text-center text-xs leading-5 text-nebari-muted">
+              Nebari will create the Studio,
+              send the invitation and connect
+              the owner automatically.
             </p>
-          </div>
 
-          {/* SYMBOL */}
-
-          <div>
-            <label
-              htmlFor="icon"
-              className="block text-sm font-medium text-stone-700"
-            >
-              Symbol
-            </label>
-
-            <input
-              id="icon"
-              value={icon}
-              onChange={(event) =>
-                setIcon(event.target.value)
-              }
-              placeholder="🎨"
-              className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
-            />
-
-            <p className="mt-2 text-xs text-stone-400">
-              An emoji works nicely here.
-            </p>
-          </div>
-
-          {/* DESCRIPTION */}
-
-          <div>
-            <label
-              htmlFor="description"
-              className="block text-sm font-medium text-stone-700"
-            >
-              Short description
-            </label>
-
-            <textarea
-              id="description"
-              rows={5}
-              value={description}
-              onChange={(event) =>
-                setDescription(
-                  event.target.value,
-                )
-              }
-              placeholder="A quiet place for colour, ideas and things worth making."
-              className="mt-2 w-full resize-y rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
-            />
-          </div>
-
-          {/* COLOUR */}
-
-          <div>
-            <label
-              htmlFor="colour"
-              className="block text-sm font-medium text-stone-700"
-            >
-              Accent colour
-            </label>
-
-            <select
-              id="colour"
-              value={colour}
-              onChange={(event) =>
-                setColour(
-                  event.target.value,
-                )
-              }
-              className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-stone-800"
-            >
-              <option value="stone">
-                Stone
-              </option>
-
-              <option value="green">
-                Green
-              </option>
-
-              <option value="amber">
-                Amber
-              </option>
-
-              <option value="rose">
-                Rose
-              </option>
-
-              <option value="blue">
-                Blue
-              </option>
-
-              <option value="violet">
-                Violet
-              </option>
-            </select>
-          </div>
-
-          {/* ERROR */}
-
-          {errorMessage && (
-            <p
-              role="alert"
-              className="rounded-xl bg-red-50 p-4 text-sm leading-6 text-red-700"
-            >
-              {errorMessage}
-            </p>
-          )}
-
-          {/* SUBMIT */}
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex w-full items-center justify-center rounded-full bg-stone-800 px-8 py-3 text-sm text-stone-50 transition-all hover:bg-stone-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saving
-              ? "Creating Studio & Sending Invitation..."
-              : "Create Studio & Send Invitation"}
-          </button>
+          </section>
 
         </form>
 
         <footer className="text-center">
           <Link
             href="/admin/studios"
-            className="text-sm text-stone-400 transition-colors hover:text-stone-700"
+            className="text-sm text-nebari-muted transition-colors hover:text-nebari-green"
           >
             ← Manage Studios
           </Link>
         </footer>
 
       </div>
+
+      {/* DARK TIMBER FOOTER */}
+
+      <footer className="mt-12 border-t border-[#2b211c] bg-[#3b2f2a]">
+
+        <div className="mx-auto max-w-6xl px-6 py-10 text-center">
+
+          <div className="mx-auto mb-4 flex items-center justify-center gap-3">
+
+            <span className="h-px w-12 bg-[#6b1d1d]" />
+
+            <span className="text-[#6b1d1d]">
+              ◆
+            </span>
+
+            <span className="h-px w-12 bg-[#6b1d1d]" />
+
+          </div>
+
+          <p className="nebari-brand text-xs text-[#e8e1d5]">
+            Roots first. Growth second.
+          </p>
+
+        </div>
+
+      </footer>
+
     </main>
   );
 }

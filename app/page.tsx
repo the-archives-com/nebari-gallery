@@ -1,102 +1,211 @@
 import Image from "next/image";
 import Link from "next/link";
+
 import OwnerLink from "./components/OwnerLink";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-stone-50 px-6 py-16">
-      <div className="mx-auto max-w-5xl space-y-12">
+    <main className="min-h-screen bg-background text-foreground">
 
-        <header className="space-y-5 text-center">
-          <p className="text-3xl">🌿</p>
+      {/* TOP BRAND BAR */}
 
-          <h1 className="text-4xl font-light tracking-wide sm:text-6xl">
-            Nebari Gallery
-          </h1>
+      <div className="border-b border-nebari-border bg-nebari-surface/70">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
 
-          <p className="mx-auto max-w-2xl text-lg leading-8 text-stone-600">
-            A shared place for creative work to branch outward.
-          </p>
-        </header>
-
-        <nav className="mx-auto grid w-full max-w-2xl gap-3 sm:grid-cols-3">
           <Link
             href="/"
-            aria-current="page"
-            className="flex min-h-12 items-center justify-center rounded-full bg-stone-800 px-5 py-3 text-sm text-stone-50 transition-all duration-300 hover:scale-[1.02] hover:bg-stone-700 active:scale-95"
+            className="nebari-brand text-sm font-medium text-nebari-ink"
           >
-            Home
+            Studio Nebari
           </Link>
+
+          <nav className="flex items-center gap-7 text-xs font-medium uppercase tracking-[0.14em]">
+
+            <Link
+              href="/"
+              aria-current="page"
+              className="border-b-2 border-nebari-green pb-2 text-nebari-green"
+            >
+              Home
+            </Link>
+
+            <Link
+              href="/gallery"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Gallery
+            </Link>
+
+            <Link
+              href="/studios"
+              className="text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              Studios
+            </Link>
+
+          </nav>
+
+        </div>
+      </div>
+
+      {/* HERO */}
+
+      <section className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
+
+        <div className="mx-auto max-w-3xl text-center">
+
+          <p className="nebari-brand text-xs text-nebari-maple">
+            Studio Nebari
+          </p>
+
+          <h1 className="nebari-serif mt-5 text-5xl font-medium tracking-tight text-nebari-ink sm:text-7xl">
+            A place for meaningful work.
+          </h1>
+
+          <div className="mx-auto mt-6 flex items-center justify-center gap-3">
+
+            <span className="h-px w-12 bg-nebari-maple/40" />
+
+            <span className="text-sm text-nebari-maple">
+              ◆
+            </span>
+
+            <span className="h-px w-12 bg-nebari-maple/40" />
+
+          </div>
+
+          <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-nebari-muted">
+            Personal Studios are where the work grows.
+            Selected pieces come together in the shared Gallery.
+          </p>
+
+        </div>
+
+        {/* PRIMARY DOORS */}
+
+        <div className="mx-auto mt-14 grid max-w-3xl gap-5 sm:grid-cols-2">
 
           <Link
             href="/gallery"
-            className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all duration-300 hover:scale-[1.02] hover:border-stone-400 hover:bg-stone-100 active:scale-95"
+            className="group rounded-2xl border border-nebari-border bg-nebari-surface p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-nebari-sage hover:shadow-xl"
           >
-            Gallery
+
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-nebari-green">
+              Shared Exhibition
+            </p>
+
+            <h2 className="nebari-serif mt-3 text-3xl font-medium text-nebari-ink">
+              Gallery
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-nebari-muted">
+              Selected work from across personal Studios.
+            </p>
+
+            <p className="mt-6 text-sm text-nebari-green transition-all group-hover:translate-x-1">
+              Enter the Gallery →
+            </p>
+
           </Link>
 
           <Link
             href="/studios"
-            className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all duration-300 hover:scale-[1.02] hover:border-stone-400 hover:bg-stone-100 active:scale-95"
+            className="group rounded-2xl border border-nebari-border bg-nebari-surface p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-nebari-sage hover:shadow-xl"
           >
-            Studios
+
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-nebari-green">
+              Personal Spaces
+            </p>
+
+            <h2 className="nebari-serif mt-3 text-3xl font-medium text-nebari-ink">
+              Studios
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-nebari-muted">
+              See what people are making and step into their Studios.
+            </p>
+
+            <p className="mt-6 text-sm text-nebari-green transition-all group-hover:translate-x-1">
+              Visit the Studios →
+            </p>
+
           </Link>
-        </nav>
 
-        <section className="mx-auto max-w-2xl text-center">
-          <p className="text-base leading-8 text-stone-600">
-            Personal Studios are where the work grows.
-            Selected pieces come together in the shared Gallery.
-          </p>
+        </div>
+
+        {/* MAKERS MARK */}
+
+        <section className="mx-auto mt-20 w-full max-w-2xl">
+
+          <div className="overflow-hidden rounded-2xl border border-nebari-border bg-nebari-surface shadow-lg">
+            <Image
+              src="/nebari-makers-mark.png"
+              alt="Studio Nebari — Roots First. Growth Second."
+              width={1536}
+              height={1536}
+              priority
+              className="h-auto w-full"
+            />
+          </div>
+
         </section>
 
-        <section className="mx-auto w-full max-w-xl">
-          <Image
-            src="/nebari-makers-mark.png"
-            alt="Studio Nebari — Roots First. Growth Second."
-            width={1536}
-            height={1536}
-            priority
-            className="h-auto w-full rounded-2xl shadow-lg"
-          />
-        </section>
+      </section>
 
+      {/* DARK TIMBER FOOTER */}
 
-        <footer className="space-y-4 text-center text-sm text-stone-500">
-          <p>
-            An idea grown at
-            <br />
-            <strong>Studio Nebari</strong>
-          </p>
+      <footer className="border-t border-[#2b211c] bg-[#3b2f2a]">
 
-          <p className="italic">
+        <div className="mx-auto max-w-6xl px-6 py-10 text-center">
+
+          <div className="mx-auto mb-4 flex items-center justify-center gap-3">
+
+            <span className="h-px w-12 bg-[#6b1d1d]" />
+
+            <span className="text-[#6b1d1d]">
+              ◆
+            </span>
+
+            <span className="h-px w-12 bg-[#6b1d1d]" />
+
+          </div>
+
+          <p className="nebari-brand text-xs text-[#e8e1d5]">
             Roots first. Growth second.
           </p>
 
-          <div className="flex justify-center gap-4 text-xs text-stone-400">
+          <div className="mt-6 flex justify-center gap-4 text-xs text-[#e8e1d5]/65">
+
             <Link
               href="/privacy"
-              className="transition-colors hover:text-stone-700"
+              className="transition-colors hover:text-white"
             >
               Privacy
             </Link>
 
-            <span aria-hidden="true">·</span>
+            <span aria-hidden="true">
+              ·
+            </span>
 
             <Link
               href="/terms"
-              className="transition-colors hover:text-stone-700"
+              className="transition-colors hover:text-white"
             >
               Terms
             </Link>
 
-            <span aria-hidden="true">·</span>
+            <span aria-hidden="true">
+              ·
+            </span>
 
             <OwnerLink />
-          </div>
-        </footer>
 
-      </div>
+          </div>
+
+        </div>
+
+      </footer>
+
     </main>
   );
 }
