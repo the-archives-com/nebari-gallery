@@ -5,15 +5,19 @@ import { supabaseAdmin } from "../../../../lib/supabase-admin";
 export async function POST(request: Request) {
   try {
     /*
-     * 1. Get the caller's access token.
+     * 1. Verify that the request contains
+     *    an authenticated Nebari user.
      */
     const authHeader =
       request.headers.get("authorization");
 
-    if (!authHeader?.startsWith("Bearer ")) {
+    if (
+      !authHeader?.startsWith("Bearer ")
+    ) {
       return NextResponse.json(
         {
-          error: "You must be signed in.",
+          error:
+            "You must be signed in.",
         },
         {
           status: 401,
@@ -22,19 +26,27 @@ export async function POST(request: Request) {
     }
 
     const accessToken =
-      authHeader.slice("Bearer ".length);
+      authHeader.slice(
+        "Bearer ".length,
+      );
 
-    /*
-     * 2. Ask Supabase which user owns this token.
-     */
     const {
       data: { user },
       error: userError,
-    } = await supabaseAdmin.auth.getUser(
-      accessToken,
-    );
+    } =
+      await supabaseAdmin.auth.getUser(
+        accessToken,
+      );
 
-    if (userError || !user) {
+    if (
+      userError ||
+      !user
+    ) {
+      console.error(
+        "Could not verify administrator:",
+        userError,
+      );
+
       return NextResponse.json(
         {
           error:
@@ -47,11 +59,12 @@ export async function POST(request: Request) {
     }
 
     /*
-     * 3. Check that this user is the owner
-     *    of the Nebari administration Studio.
+     * 2. Only the owner of the Nebari
+     *    administration Studio may create
+     *    new Studios.
      */
     const {
-      data: membership,
+      data: adminMembership,
       error: membershipError,
     } = await supabaseAdmin
       .from("studio_members")
@@ -63,17 +76,17 @@ export async function POST(request: Request) {
 
     if (
       membershipError ||
-      !membership
+      !adminMembership
     ) {
       console.error(
-        "Nebari admin check failed:",
+        "Nebari administrator check failed:",
         membershipError,
       );
 
       return NextResponse.json(
         {
           error:
-            "You do not have permission to invite Studio owners.",
+            "You do not have permission to create Studios.",
         },
         {
           status: 403,
@@ -82,21 +95,26 @@ export async function POST(request: Request) {
     }
 
     /*
-     * 4. Read and validate the invitation.
+     * 3. Read the Studio and owner details.
      */
     let body: {
       email?: unknown;
       ownerName?: unknown;
       studioSlug?: unknown;
+      studioName?: unknown;
+      description?: unknown;
+      icon?: unknown;
+      colour?: unknown;
     };
 
     try {
-      body = await request.json();
+      body =
+        await request.json();
     } catch {
       return NextResponse.json(
         {
           error:
-            "The invitation details are missing.",
+            "The Studio details are missing.",
         },
         {
           status: 400,
@@ -106,7 +124,9 @@ export async function POST(request: Request) {
 
     const email =
       typeof body.email === "string"
-        ? body.email.trim().toLowerCase()
+        ? body.email
+            .trim()
+            .toLowerCase()
         : "";
 
     const ownerName =
@@ -116,14 +136,51 @@ export async function POST(request: Request) {
 
     const studioSlug =
       typeof body.studioSlug === "string"
-        ? body.studioSlug.trim().toLowerCase()
+        ? body.studioSlug
+            .trim()
+            .toLowerCase()
         : "";
 
+    const studioName =
+      typeof body.studioName === "string"
+        ? body.studioName.trim()
+        : "";
+
+    const description =
+      typeof body.description === "string"
+        ? body.description.trim()
+        : "";
+
+    const icon =
+      typeof body.icon === "string"
+        ? body.icon.trim()
+        : "🌿";
+
+    const colour =
+      typeof body.colour === "string"
+        ? body.colour.trim()
+        : "";
+
+    /*
+     * 4. Validate the required fields.
+     */
     if (!email) {
       return NextResponse.json(
         {
           error:
             "An email address is required.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    if (!ownerName) {
+      return NextResponse.json(
+        {
+          error:
+            "An owner name is required.",
         },
         {
           status: 400,
@@ -143,28 +200,11 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * 5. Confirm the Studio actually exists.
-     */
-    const {
-      data: studio,
-      error: studioError,
-    } = await supabaseAdmin
-      .from("studios")
-      .select("slug")
-      .eq("slug", studioSlug)
-      .maybeSingle();
-
-    if (studioError || !studio) {
-      console.error(
-        "Could not verify Studio:",
-        studioError,
-      );
-
+    if (!studioName) {
       return NextResponse.json(
         {
           error:
-            "The Studio could not be found.",
+            "A Studio name is required.",
         },
         {
           status: 400,
@@ -173,34 +213,142 @@ export async function POST(request: Request) {
     }
 
     /*
-     * 6. Send the invitation.
+     * 5. Make sure this Studio address
+     *    isn't already being used.
      */
     const {
-      data,
-      error: inviteError,
-    } =
-      await supabaseAdmin.auth.admin.inviteUserByEmail(
-        email,
-        {
-          data: {
-            owner_name: ownerName,
-            studio_slug: studioSlug,
-          },
+      data: existingStudio,
+      error: existingStudioError,
+    } = await supabaseAdmin
+      .from("studios")
+      .select("slug")
+      .eq("slug", studioSlug)
+      .maybeSingle();
 
-          redirectTo:
-            "https://www.nebari.com.au/update-password",
-        },
-      );
-
-    if (inviteError) {
+    if (existingStudioError) {
       console.error(
-        "Could not invite Studio owner:",
-        inviteError,
+        "Could not check Studio address:",
+        existingStudioError,
       );
 
       return NextResponse.json(
         {
-          error: inviteError.message,
+          error:
+            "Nebari could not check whether that Studio address is available.",
+        },
+        {
+          status: 500,
+        },
+      );
+    }
+
+    if (existingStudio) {
+      return NextResponse.json(
+        {
+          error:
+            "That Studio address is already being used.",
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
+    /*
+     * 6. Create the Studio.
+     */
+    const {
+      error: studioError,
+    } = await supabaseAdmin
+      .from("studios")
+      .insert({
+        slug: studioSlug,
+        name: studioName,
+        owner: ownerName,
+        description:
+          description || null,
+        icon:
+          icon || "🌿",
+        colour:
+          colour || null,
+      });
+
+    if (studioError) {
+      console.error(
+        "Could not create Studio:",
+        studioError,
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            `Could not create the Studio: ${studioError.message}`,
+        },
+        {
+          status: 500,
+        },
+      );
+    }
+
+    /*
+     * 7. Invite the owner.
+     *
+     * Supabase returns the invited user's
+     * UUID, which we need for studio_members.
+     */
+    const {
+      data: inviteData,
+      error: inviteError,
+    } =
+      await supabaseAdmin.auth.admin
+        .inviteUserByEmail(
+          email,
+          {
+            data: {
+              owner_name:
+                ownerName,
+
+              studio_slug:
+                studioSlug,
+            },
+
+            redirectTo:
+              "https://www.nebari.com.au/update-password",
+          },
+        );
+
+    if (inviteError) {
+      console.error(
+        "Studio created but invitation failed:",
+        inviteError,
+      );
+
+      /*
+       * Remove the Studio again so a failed
+       * invitation doesn't leave an orphaned
+       * Studio behind.
+       */
+      const {
+        error: cleanupError,
+      } = await supabaseAdmin
+        .from("studios")
+        .delete()
+        .eq(
+          "slug",
+          studioSlug,
+        );
+
+      if (cleanupError) {
+        console.error(
+          "Could not clean up Studio after invitation failure:",
+          cleanupError,
+        );
+      }
+
+      return NextResponse.json(
+        {
+          error:
+            `The invitation could not be sent: ${inviteError.message}`,
         },
         {
           status: 400,
@@ -209,13 +357,17 @@ export async function POST(request: Request) {
     }
 
     const invitedUserId =
-      data.user?.id;
+      inviteData.user?.id;
 
     if (!invitedUserId) {
+      console.error(
+        "Invitation succeeded but Supabase returned no user ID.",
+      );
+
       return NextResponse.json(
         {
           error:
-            "The invitation was sent, but the new user ID could not be found.",
+            "The invitation was sent, but Nebari could not identify the new owner.",
         },
         {
           status: 500,
@@ -224,28 +376,34 @@ export async function POST(request: Request) {
     }
 
     /*
-     * 7. Link the invited user to their Studio.
+     * 8. Link the invited user to
+     *    their new Studio.
      */
     const {
       error: linkError,
     } = await supabaseAdmin
       .from("studio_members")
       .insert({
-        user_id: invitedUserId,
-        studio_slug: studioSlug,
-        role: "owner",
+        user_id:
+          invitedUserId,
+
+        studio_slug:
+          studioSlug,
+
+        role:
+          "owner",
       });
 
     if (linkError) {
       console.error(
-        "Could not link Studio owner:",
+        "Could not create Studio membership:",
         linkError,
       );
 
       return NextResponse.json(
         {
           error:
-            "The invitation was sent, but the Studio could not be linked to the new owner.",
+            `The invitation was sent and the Studio was created, but the owner could not be linked: ${linkError.message}`,
         },
         {
           status: 500,
@@ -253,23 +411,33 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+     * 9. Everything worked.
+     */
     return NextResponse.json({
       success: true,
-      userId: invitedUserId,
-      email:
-        data.user?.email ?? email,
+
       studioSlug,
+
+      studioName,
+
+      userId:
+        invitedUserId,
+
+      email:
+        inviteData.user?.email ??
+        email,
     });
   } catch (error) {
     console.error(
-      "Unexpected invitation error:",
+      "Unexpected Studio creation error:",
       error,
     );
 
     return NextResponse.json(
       {
         error:
-          "Something went wrong while sending the invitation.",
+          "Something unexpected went wrong while creating the Studio.",
       },
       {
         status: 500,

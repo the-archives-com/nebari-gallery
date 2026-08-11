@@ -67,88 +67,124 @@ export default function NewStudioPage() {
 
     setSaving(true);
 
-    const { error } = await supabase
-      .from("studios")
-      .insert({
-        slug: finalSlug,
-        name: name.trim(),
-        owner: owner.trim(),
-        description:
-          description.trim() || null,
-        icon: icon.trim() || "🌿",
-        colour: colour.trim() || null,
-      });
+    /*
+     * Get the signed-in Nebari administrator's
+     * access token.
+     */
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
-    if (error) {
+    if (
+      sessionError ||
+      !session?.access_token
+    ) {
+      console.error(
+        "Could not verify administrator session:",
+        sessionError,
+      );
+
+      setErrorMessage(
+        "Your login could not be verified. Please sign in again.",
+      );
+
+      setSaving(false);
+      return;
+    }
+
+    /*
+     * The server API now handles the complete
+     * operation:
+     *
+     * 1. Create Studio
+     * 2. Invite owner
+     * 3. Create Studio membership
+     */
+    try {
+      const response = await fetch(
+        "/api/admin/invite-studio-owner",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Authorization:
+              `Bearer ${session.access_token}`,
+          },
+
+          body: JSON.stringify({
+            email: ownerEmail
+              .trim()
+              .toLowerCase(),
+
+            ownerName:
+              owner.trim(),
+
+            studioSlug:
+              finalSlug,
+
+            studioName:
+              name.trim(),
+
+            description:
+              description.trim() || null,
+
+            icon:
+              icon.trim() || "🌿",
+
+            colour:
+              colour.trim() || null,
+          }),
+        },
+      );
+
+      let result: {
+        success?: boolean;
+        error?: string;
+        studioSlug?: string;
+      } = {};
+
+      try {
+        result = await response.json();
+      } catch {
+        setErrorMessage(
+          "Nebari received an unexpected response while creating the Studio.",
+        );
+
+        setSaving(false);
+        return;
+      }
+
+      if (!response.ok) {
+        setErrorMessage(
+          result.error ??
+            "The Studio could not be created.",
+        );
+
+        setSaving(false);
+        return;
+      }
+
+      /*
+       * Everything worked.
+       */
+      router.push("/admin/studios");
+      router.refresh();
+    } catch (error) {
       console.error(
         "Could not create Studio:",
         error,
       );
 
-      if (
-        error.message
-          .toLowerCase()
-          .includes("duplicate")
-      ) {
-        setErrorMessage(
-          "That Studio address is already being used.",
-        );
-      } else {
-        setErrorMessage(
-          `Could not create the Studio: ${error.message}`,
-        );
-      }
-
-      setSaving(false);
-      return;
-    }
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
       setErrorMessage(
-        "Your Studio was created, but your login could not be verified to send the invitation.",
+        "Nebari could not create the Studio. Please try again.",
       );
 
       setSaving(false);
-      return;
     }
-
-    const inviteResponse = await fetch(
-      "/api/admin/invite-studio-owner",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization:
-            `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-        email: ownerEmail.trim(),
-        ownerName: owner.trim(),
-        studioSlug: finalSlug,
-        }),
-      },
-    );
-
-    const inviteResult =
-      await inviteResponse.json();
-
-    if (!inviteResponse.ok) {
-      setErrorMessage(
-        `The Studio was created, but the invitation could not be sent: ${
-          inviteResult.error ?? "Unknown error"
-        }`,
-      );
-
-      setSaving(false);
-      return;
-    }
-
-    router.push("/admin/studios");
-    router.refresh();
   }
 
   return (
@@ -156,15 +192,17 @@ export default function NewStudioPage() {
       <div className="mx-auto max-w-xl space-y-10">
 
         <header className="space-y-4 text-center">
-          <p className="text-4xl">🌿</p>
+          <p className="text-4xl">
+            🌿
+          </p>
 
           <h1 className="text-4xl font-light tracking-wide text-stone-800">
             Create a Studio
           </h1>
 
           <p className="mx-auto max-w-md leading-7 text-stone-600">
-            Make a new little corner of Nebari for
-            someone to call their own.
+            Make a new little corner of Nebari
+            for someone to call their own.
           </p>
         </header>
 
@@ -172,6 +210,8 @@ export default function NewStudioPage() {
           onSubmit={handleSubmit}
           className="space-y-6 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm"
         >
+
+          {/* OWNER NAME */}
 
           <div>
             <label
@@ -192,6 +232,8 @@ export default function NewStudioPage() {
             />
           </div>
 
+          {/* OWNER EMAIL */}
+
           <div>
             <label
               htmlFor="owner-email"
@@ -205,16 +247,21 @@ export default function NewStudioPage() {
               type="email"
               value={ownerEmail}
               onChange={(event) =>
-                setOwnerEmail(event.target.value)
+                setOwnerEmail(
+                  event.target.value,
+                )
               }
               placeholder="artist@example.com"
               className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
             />
 
             <p className="mt-2 text-xs text-stone-400">
-              We’ll send their Nebari invitation here.
+              We’ll send their Nebari
+              invitation here.
             </p>
           </div>
+
+          {/* STUDIO NAME */}
 
           <div>
             <label
@@ -235,6 +282,8 @@ export default function NewStudioPage() {
             />
           </div>
 
+          {/* STUDIO SLUG */}
+
           <div>
             <label
               htmlFor="slug"
@@ -248,7 +297,9 @@ export default function NewStudioPage() {
               value={slug}
               onChange={(event) =>
                 setSlug(
-                  cleanSlug(event.target.value),
+                  cleanSlug(
+                    event.target.value,
+                  ),
                 )
               }
               placeholder="heather"
@@ -257,9 +308,12 @@ export default function NewStudioPage() {
 
             <p className="mt-2 text-xs text-stone-400">
               This becomes:{" "}
-              /studios/{slug || "studio-name"}
+              /studios/
+              {slug || "studio-name"}
             </p>
           </div>
+
+          {/* SYMBOL */}
 
           <div>
             <label
@@ -284,6 +338,8 @@ export default function NewStudioPage() {
             </p>
           </div>
 
+          {/* DESCRIPTION */}
+
           <div>
             <label
               htmlFor="description"
@@ -297,12 +353,16 @@ export default function NewStudioPage() {
               rows={5}
               value={description}
               onChange={(event) =>
-                setDescription(event.target.value)
+                setDescription(
+                  event.target.value,
+                )
               }
               placeholder="A quiet place for colour, ideas and things worth making."
               className="mt-2 w-full resize-y rounded-xl border border-stone-300 px-4 py-3 text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
             />
           </div>
+
+          {/* COLOUR */}
 
           <div>
             <label
@@ -316,7 +376,9 @@ export default function NewStudioPage() {
               id="colour"
               value={colour}
               onChange={(event) =>
-                setColour(event.target.value)
+                setColour(
+                  event.target.value,
+                )
               }
               className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-stone-800"
             >
@@ -346,6 +408,8 @@ export default function NewStudioPage() {
             </select>
           </div>
 
+          {/* ERROR */}
+
           {errorMessage && (
             <p
               role="alert"
@@ -354,6 +418,8 @@ export default function NewStudioPage() {
               {errorMessage}
             </p>
           )}
+
+          {/* SUBMIT */}
 
           <button
             type="submit"

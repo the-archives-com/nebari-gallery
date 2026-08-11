@@ -148,23 +148,17 @@ export default function StudioPage() {
     <main className="min-h-screen bg-stone-50 px-6 py-16">
       <div className="mx-auto max-w-5xl space-y-12">
 
-        <nav className="flex justify-center">
-          <Link
-            href="/studios"
-            className="text-sm text-stone-500 transition-colors hover:text-stone-900"
-          >
-            ← Studios
-          </Link>
-        </nav>
-
         <header className="mx-auto max-w-2xl space-y-5 text-center">
           <p className="text-4xl">
             {studio.icon || "🌿"}
           </p>
 
+          
+
           <h1 className="text-4xl font-light tracking-wide text-stone-800 sm:text-6xl">
             {studio.name}
           </h1>
+
 
           {studio.owner && (
             <p className="text-sm text-stone-400">
@@ -172,13 +166,29 @@ export default function StudioPage() {
             </p>
           )}
 
-          {studio.description && (
-            <p className="text-lg leading-8 text-stone-600">
-              {studio.description}
-            </p>
-          )}
         </header>
+<nav className="mx-auto grid w-full max-w-2xl gap-3 sm:grid-cols-3">
+  <Link
+    href="/"
+    className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100"
+  >
+    Home
+  </Link>
 
+  <Link
+    href="/gallery"
+    className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100"
+  >
+    Gallery
+  </Link>
+
+  <Link
+    href="/studios"
+    className="flex min-h-12 items-center justify-center rounded-full bg-stone-800 px-5 py-3 text-sm text-stone-50"
+  >
+    Studios
+  </Link>
+</nav>
         {studio.description && (
           <section className="mx-auto max-w-2xl rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
             <p className="text-sm font-medium uppercase tracking-widest text-stone-400">

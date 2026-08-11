@@ -5,10 +5,21 @@ import {
   useParams,
   useRouter,
 } from "next/navigation";
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { getStudio } from "../../../../../lib/studios";
 import { supabase } from "../../../../../lib/supabase";
+
+type Studio = {
+  slug: string;
+  name: string;
+  owner: string | null;
+  description: string | null;
+  icon: string | null;
+  colour: string | null;
+};
 
 type Artwork = {
   id: number;
@@ -22,6 +33,12 @@ type Artwork = {
   gallery_status: string;
 };
 
+const collections = [
+  "Photography",
+  "Artwork",
+  "Works in Progress",
+];
+
 export default function ArtworkPage() {
   const params = useParams<{
     slug: string;
@@ -29,51 +46,110 @@ export default function ArtworkPage() {
   }>();
 
   const router = useRouter();
-  const studio = getStudio(params.slug);
+
+  const [studio, setStudio] =
+    useState<Studio | null>(null);
 
   const [artwork, setArtwork] =
     useState<Artwork | null>(null);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] =
+    useState(false);
 
-  const [editTitle, setEditTitle] = useState("");
-  const [editDescription, setEditDescription] =
-    useState("");
-  const [editCategory, setEditCategory] =
-    useState("");
+  const [saving, setSaving] =
+    useState(false);
+
+  const [
+    editTitle,
+    setEditTitle,
+  ] = useState("");
+
+  const [
+    editDescription,
+    setEditDescription,
+  ] = useState("");
+
+  const [
+    editCategory,
+    setEditCategory,
+  ] = useState("");
 
   useEffect(() => {
-    async function loadArtwork() {
-      const { data, error } = await supabase
-        .from("studio_artworks")
-        .select("*")
-        .eq("id", params.id)
-        .eq("studio_slug", params.slug)
-        .single();
+    async function loadPage() {
+      setLoading(true);
 
-      if (error) {
+      const [
+        studioResult,
+        artworkResult,
+      ] = await Promise.all([
+        supabase
+          .from("studios")
+          .select(
+            "slug, name, owner, description, icon, colour",
+          )
+          .eq(
+            "slug",
+            params.slug,
+          )
+          .maybeSingle(),
+
+        supabase
+          .from("studio_artworks")
+          .select("*")
+          .eq("id", params.id)
+          .eq(
+            "studio_slug",
+            params.slug,
+          )
+          .maybeSingle(),
+      ]);
+
+      if (studioResult.error) {
         console.error(
-          "Could not load artwork:",
-          error,
+          "Could not load Studio:",
+          studioResult.error,
         );
-
-        setLoading(false);
-        return;
       }
 
-      setArtwork(data);
+      if (artworkResult.error) {
+        console.error(
+          "Could not load artwork:",
+          artworkResult.error,
+        );
+      }
 
-      setEditTitle(data.title);
-      setEditDescription(data.description ?? "");
-      setEditCategory(data.category ?? "");
+      setStudio(
+        studioResult.data ?? null,
+      );
+
+      const loadedArtwork =
+        artworkResult.data ?? null;
+
+      setArtwork(loadedArtwork);
+
+      if (loadedArtwork) {
+        setEditTitle(
+          loadedArtwork.title,
+        );
+
+        setEditDescription(
+          loadedArtwork.description ??
+            "",
+        );
+
+        setEditCategory(
+          loadedArtwork.category ??
+            "",
+        );
+      }
 
       setLoading(false);
     }
 
-    loadArtwork();
+    loadPage();
   }, [params.id, params.slug]);
 
   async function handleUpdateDetails() {
@@ -82,22 +158,29 @@ export default function ArtworkPage() {
     }
 
     if (!editTitle.trim()) {
-      alert("The artwork needs a title.");
+      alert(
+        "The artwork needs a title.",
+      );
       return;
     }
 
     setSaving(true);
 
-    const { error } = await supabase
-      .from("studio_artworks")
-      .update({
-        title: editTitle.trim(),
-        description:
-          editDescription.trim() || null,
-        category:
-          editCategory || null,
-      })
-      .eq("id", artwork.id);
+    const { error } =
+      await supabase
+        .from("studio_artworks")
+        .update({
+          title:
+            editTitle.trim(),
+
+          description:
+            editDescription.trim() ||
+            null,
+
+          category:
+            editCategory || null,
+        })
+        .eq("id", artwork.id);
 
     if (error) {
       console.error(
@@ -115,9 +198,14 @@ export default function ArtworkPage() {
 
     setArtwork({
       ...artwork,
-      title: editTitle.trim(),
+
+      title:
+        editTitle.trim(),
+
       description:
-        editDescription.trim() || null,
+        editDescription.trim() ||
+        null,
+
       category:
         editCategory || null,
     });
@@ -127,13 +215,17 @@ export default function ArtworkPage() {
   }
 
   async function handleTakeDown() {
-    if (!artwork || !studio) {
+    if (
+      !artwork ||
+      !studio
+    ) {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Take down "${artwork.title}" from ${studio.name}?`,
-    );
+    const confirmed =
+      window.confirm(
+        `Take down "${artwork.title}" from ${studio.name}?`,
+      );
 
     if (!confirmed) {
       return;
@@ -141,16 +233,15 @@ export default function ArtworkPage() {
 
     setSaving(true);
 
-    /*
-      First remove the actual image
-      from Supabase Storage.
-    */
-
     if (artwork.storage_path) {
-      const { error: storageError } =
+      const {
+        error: storageError,
+      } =
         await supabase.storage
           .from("studio-art")
-          .remove([artwork.storage_path]);
+          .remove([
+            artwork.storage_path,
+          ]);
 
       if (storageError) {
         console.error(
@@ -167,15 +258,12 @@ export default function ArtworkPage() {
       }
     }
 
-    /*
-      Then remove its database record.
-    */
-
-    const { error: databaseError } =
-      await supabase
-        .from("studio_artworks")
-        .delete()
-        .eq("id", artwork.id);
+    const {
+      error: databaseError,
+    } = await supabase
+      .from("studio_artworks")
+      .delete()
+      .eq("id", artwork.id);
 
     if (databaseError) {
       console.error(
@@ -198,76 +286,85 @@ export default function ArtworkPage() {
     router.refresh();
   }
 
-async function handleGalleryFeature() {
-  if (!artwork) {
-    return;
-  }
+  async function handleGalleryFeature() {
+    if (!artwork) {
+      return;
+    }
 
-  const wasFeatured =
-    artwork.gallery_status === "featured";
+    const wasFeatured =
+      artwork.gallery_status ===
+      "featured";
 
-  const newStatus = wasFeatured
-    ? "not_featured"
-    : "featured";
+    const newStatus =
+      wasFeatured
+        ? "not_featured"
+        : "featured";
 
-  setSaving(true);
+    setSaving(true);
 
-  const result = await supabase
-    .from("studio_artworks")
-    .update({
-      gallery_status: newStatus,
-    })
-    .eq("id", artwork.id)
-    .select("id, gallery_status");
+    const result =
+      await supabase
+        .from("studio_artworks")
+        .update({
+          gallery_status:
+            newStatus,
+        })
+        .eq("id", artwork.id)
+        .select(
+          "id, gallery_status",
+        );
 
-  const updateError = result.error as
-    | { message: string }
-    | null;
+    if (result.error) {
+      console.error(
+        "Could not change Gallery status:",
+        result.error,
+      );
 
-  const updatedRows = result.data as
-    | Array<{
-        id: number;
-        gallery_status: string;
-      }>
-    | null;
+      alert(
+        `Could not change Gallery status: ${result.error.message}`,
+      );
 
-  if (updateError) {
-    console.error(
-      "Could not change Gallery status:",
-      updateError,
-    );
+      setSaving(false);
+      return;
+    }
 
-    alert(
-      `Could not change Gallery status: ${updateError.message}`,
-    );
+    if (
+      !result.data ||
+      result.data.length === 0
+    ) {
+      alert(
+        "The Gallery status was not changed. Your account may not have permission to update this artwork.",
+      );
+
+      setSaving(false);
+      return;
+    }
+
+    setArtwork({
+      ...artwork,
+      gallery_status:
+        result.data[0]
+          .gallery_status,
+    });
 
     setSaving(false);
-    return;
+
+    if (wasFeatured) {
+      router.replace(
+        "/gallery",
+      );
+    }
   }
 
-  if (!updatedRows || updatedRows.length === 0) {
-    alert(
-      "The Gallery status was not changed. Your account may not have permission to update this artwork.",
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-stone-50 px-6 py-16">
+        <p className="text-center italic text-stone-500">
+          🌿 Preparing the artwork...
+        </p>
+      </main>
     );
-
-    setSaving(false);
-    return;
   }
-
-  setArtwork({
-    ...artwork,
-    gallery_status:
-      updatedRows[0].gallery_status,
-  });
-
-  setSaving(false);
-
-  if (wasFeatured) {
-    router.replace("/gallery");
-  }
-}
-
- 
 
   if (!studio) {
     return (
@@ -292,16 +389,6 @@ async function handleGalleryFeature() {
     );
   }
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-stone-50 px-6 py-16">
-        <p className="text-center italic text-stone-500">
-          🌿 Preparing the artwork...
-        </p>
-      </main>
-    );
-  }
-
   if (!artwork) {
     return (
       <main className="min-h-screen bg-stone-50 px-6 py-16">
@@ -311,7 +398,8 @@ async function handleGalleryFeature() {
           </p>
 
           <h1 className="mt-4 text-3xl font-light">
-            This piece isn&apos;t on the wall.
+            This piece isn&apos;t on
+            the wall.
           </h1>
 
           <Link
@@ -342,8 +430,12 @@ async function handleGalleryFeature() {
 
           <div className="bg-stone-100 p-3 sm:p-5">
             <img
-              src={artwork.image_url}
-              alt={artwork.title}
+              src={
+                artwork.image_url
+              }
+              alt={
+                artwork.title
+              }
               className="mx-auto max-h-[75vh] w-full rounded-xl object-contain"
             />
           </div>
@@ -359,14 +451,18 @@ async function handleGalleryFeature() {
 
                   {artwork.category && (
                     <p className="mt-2 text-xs uppercase tracking-[0.2em] text-stone-400">
-                      {artwork.category}
+                      {
+                        artwork.category
+                      }
                     </p>
                   )}
                 </header>
 
                 {artwork.description && (
                   <p className="max-w-2xl whitespace-pre-wrap text-base leading-8 text-stone-600">
-                    {artwork.description}
+                    {
+                      artwork.description
+                    }
                   </p>
                 )}
               </>
@@ -386,7 +482,8 @@ async function handleGalleryFeature() {
                     value={editTitle}
                     onChange={(event) =>
                       setEditTitle(
-                        event.target.value,
+                        event.target
+                          .value,
                       )
                     }
                     className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-stone-300"
@@ -404,10 +501,13 @@ async function handleGalleryFeature() {
                   <textarea
                     id="edit-description"
                     rows={6}
-                    value={editDescription}
+                    value={
+                      editDescription
+                    }
                     onChange={(event) =>
                       setEditDescription(
-                        event.target.value,
+                        event.target
+                          .value,
                       )
                     }
                     className="mt-2 w-full resize-y rounded-xl border border-stone-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-stone-300"
@@ -424,10 +524,13 @@ async function handleGalleryFeature() {
 
                   <select
                     id="edit-category"
-                    value={editCategory}
+                    value={
+                      editCategory
+                    }
                     onChange={(event) =>
                       setEditCategory(
-                        event.target.value,
+                        event.target
+                          .value,
                       )
                     }
                     className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3"
@@ -436,13 +539,19 @@ async function handleGalleryFeature() {
                       Choose a collection...
                     </option>
 
-                    {studio.sections.map(
-                      (section) => (
+                    {collections.map(
+                      (collection) => (
                         <option
-                          key={section}
-                          value={section}
+                          key={
+                            collection
+                          }
+                          value={
+                            collection
+                          }
                         >
-                          {section}
+                          {
+                            collection
+                          }
                         </option>
                       ),
                     )}
@@ -450,11 +559,14 @@ async function handleGalleryFeature() {
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-
                   <button
                     type="button"
-                    onClick={handleUpdateDetails}
-                    disabled={saving}
+                    onClick={
+                      handleUpdateDetails
+                    }
+                    disabled={
+                      saving
+                    }
                     className="rounded-full bg-stone-800 px-6 py-3 text-sm text-white hover:bg-stone-700 disabled:opacity-60"
                   >
                     {saving
@@ -465,26 +577,33 @@ async function handleGalleryFeature() {
                   <button
                     type="button"
                     onClick={() =>
-                      setEditing(false)
+                      setEditing(
+                        false,
+                      )
                     }
-                    disabled={saving}
+                    disabled={
+                      saving
+                    }
                     className="rounded-full border border-stone-300 px-6 py-3 text-sm text-stone-600 hover:bg-stone-100"
                   >
                     Cancel
                   </button>
-
                 </div>
+
               </div>
             )}
 
             <p className="text-sm text-stone-400">
               {new Date(
                 artwork.created_at,
-              ).toLocaleDateString("en-AU", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
+              ).toLocaleDateString(
+                "en-AU",
+                {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                },
+              )}
             </p>
 
           </div>
@@ -511,7 +630,9 @@ async function handleGalleryFeature() {
 
             <button
               type="button"
-              onClick={handleTakeDown}
+              onClick={
+                handleTakeDown
+              }
               disabled={saving}
               className="rounded-full border border-stone-300 px-5 py-3 text-sm text-stone-700 transition-all hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
             >
@@ -520,35 +641,31 @@ async function handleGalleryFeature() {
 
             <button
               type="button"
-              onClick={handleGalleryFeature}
+              onClick={
+                handleGalleryFeature
+              }
               disabled={saving}
-              className={`
-                rounded-full
-                px-5
-                py-3
-                text-sm
-                transition-all
-                disabled:opacity-50
-
-                ${
-                  artwork.gallery_status ===
-                  "featured"
-                    ? "border border-amber-300 bg-amber-50 text-amber-800"
-                    : "bg-stone-800 text-white hover:bg-stone-700"
-                }
-              `}
+              className={`rounded-full px-5 py-3 text-sm transition-all disabled:opacity-50 ${
+                artwork.gallery_status ===
+                "featured"
+                  ? "border border-amber-300 bg-amber-50 text-amber-800"
+                  : "bg-stone-800 text-white hover:bg-stone-700"
+              }`}
             >
-          {artwork.gallery_status === "featured"
-            ? "✓ Remove from Gallery"
-            : "⭐ Add to Gallery"}
+              {artwork.gallery_status ===
+              "featured"
+                ? "✓ Remove from Gallery"
+                : "⭐ Add to Gallery"}
             </button>
+
           </div>
 
           {artwork.gallery_status ===
             "featured" && (
-          <p className="mt-4 text-center text-sm text-stone-500">
-  This piece is currently part of the Nebari Gallery.
-</p>
+            <p className="mt-4 text-center text-sm text-stone-500">
+              This piece is currently part
+              of the Nebari Gallery.
+            </p>
           )}
 
         </section>

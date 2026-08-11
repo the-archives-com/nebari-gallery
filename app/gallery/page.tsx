@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import { supabase } from "../../lib/supabase";
-import { getStudio } from "../../lib/studios";
 
 type FeaturedArtwork = {
   id: number;
@@ -16,32 +18,60 @@ type FeaturedArtwork = {
   category: string | null;
 };
 
-export default function GalleryPage() {
-  const [featuredArtwork, setFeaturedArtwork] =
-    useState<FeaturedArtwork[]>([]);
+type StudioNameMap = {
+  [slug: string]: string;
+};
 
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
+export default function GalleryPage() {
+  const [
+    featuredArtwork,
+    setFeaturedArtwork,
+  ] = useState<FeaturedArtwork[]>([]);
+
+  const [
+    studioNames,
+    setStudioNames,
+  ] = useState<StudioNameMap>({});
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
 
   useEffect(() => {
     async function loadGallery() {
       setLoading(true);
       setErrorMessage("");
 
-      const { data, error } = await supabase
-        .from("studio_artworks")
-        .select(
-          "id, created_at, studio_slug, title, description, image_url, category",
-        )
-        .eq("gallery_status", "featured")
-        .order("created_at", {
-          ascending: false,
-        });
+      const [
+        artworkResult,
+        studioResult,
+      ] = await Promise.all([
+        supabase
+          .from("studio_artworks")
+          .select(
+            "id, created_at, studio_slug, title, description, image_url, category",
+          )
+          .eq(
+            "gallery_status",
+            "featured",
+          )
+          .order("created_at", {
+            ascending: false,
+          }),
 
-      if (error) {
+        supabase
+          .from("studios")
+          .select("slug, name"),
+      ]);
+
+      if (artworkResult.error) {
         console.error(
           "Could not load Nebari Gallery:",
-          error,
+          artworkResult.error,
         );
 
         setErrorMessage(
@@ -52,7 +82,30 @@ export default function GalleryPage() {
         return;
       }
 
-      setFeaturedArtwork(data ?? []);
+      if (studioResult.error) {
+        console.error(
+          "Could not load Studio names:",
+          studioResult.error,
+        );
+      }
+
+      const names: StudioNameMap =
+        {};
+
+      for (
+        const studio of
+          studioResult.data ?? []
+      ) {
+        names[studio.slug] =
+          studio.name;
+      }
+
+      setStudioNames(names);
+
+      setFeaturedArtwork(
+        artworkResult.data ?? [],
+      );
+
       setLoading(false);
     }
 
@@ -64,21 +117,24 @@ export default function GalleryPage() {
       <div className="mx-auto max-w-6xl space-y-14">
 
         <header className="space-y-4 text-center">
-          <p className="text-3xl">🌿</p>
+          <p className="text-3xl">
+            🌿
+          </p>
 
           <h1 className="text-4xl font-light tracking-wide sm:text-6xl">
             Nebari Gallery
           </h1>
 
           <p className="mx-auto max-w-2xl text-stone-600">
-            A shared gallery of creative work from personal Studios.
+            A shared gallery of creative work
+            from personal Studios.
           </p>
         </header>
 
         <nav className="mx-auto grid w-full max-w-2xl gap-3 sm:grid-cols-3">
           <Link
             href="/"
-            className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all duration-300 hover:scale-[1.02] hover:border-stone-400 hover:bg-stone-100 active:scale-95"
+            className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100"
           >
             Home
           </Link>
@@ -86,14 +142,14 @@ export default function GalleryPage() {
           <Link
             href="/gallery"
             aria-current="page"
-            className="flex min-h-12 items-center justify-center rounded-full bg-stone-800 px-5 py-3 text-sm text-stone-50 transition-all duration-300 hover:scale-[1.02] hover:bg-stone-700 active:scale-95"
+            className="flex min-h-12 items-center justify-center rounded-full bg-stone-800 px-5 py-3 text-sm text-stone-50"
           >
             Gallery
           </Link>
 
           <Link
             href="/studios"
-            className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all duration-300 hover:scale-[1.02] hover:border-stone-400 hover:bg-stone-100 active:scale-95"
+            className="flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm text-stone-700 transition-all hover:bg-stone-100"
           >
             Studios
           </Link>
@@ -127,76 +183,80 @@ export default function GalleryPage() {
 
           {!loading &&
             !errorMessage &&
-            featuredArtwork.length === 0 && (
+            featuredArtwork.length ===
+              0 && (
               <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
-                <p className="text-3xl">🖼️</p>
+                <p className="text-3xl">
+                  🖼️
+                </p>
 
                 <p className="mt-4 text-stone-500">
-                  The Gallery is waiting for its first selection.
+                  The Gallery is waiting
+                  for its first selection.
                 </p>
               </div>
             )}
 
           {!loading &&
             !errorMessage &&
-            featuredArtwork.length > 0 && (
+            featuredArtwork.length >
+              0 && (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {featuredArtwork.map((artwork) => {
-                  const studio =
-                    getStudio(artwork.studio_slug);
-
-                  return (
+                {featuredArtwork.map(
+                  (artwork) => (
                     <Link
                       key={artwork.id}
                       href={`/studios/${artwork.studio_slug}/artwork/${artwork.id}`}
-                      className="
-                        block
-                        overflow-hidden
-                        rounded-xl
-                        bg-white
-                        p-3
-                        pb-6
-                        shadow-lg
-                        transition-all
-                        duration-300
-                        hover:-translate-y-1
-                        hover:shadow-2xl
-                      "
+                      className="block overflow-hidden rounded-xl bg-white p-3 pb-6 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
                     >
                       <div className="overflow-hidden rounded bg-stone-100">
                         <img
-                          src={artwork.image_url}
-                          alt={artwork.title}
+                          src={
+                            artwork.image_url
+                          }
+                          alt={
+                            artwork.title
+                          }
                           className="aspect-square w-full object-cover transition-transform duration-700 hover:scale-105"
                         />
                       </div>
 
                       <div className="px-2 pt-4">
                         <h3 className="text-lg font-medium text-stone-800">
-                          {artwork.title}
+                          {
+                            artwork.title
+                          }
                         </h3>
 
                         {artwork.category && (
                           <p className="mt-1 text-xs uppercase tracking-wider text-stone-400">
-                            {artwork.category}
+                            {
+                              artwork.category
+                            }
                           </p>
                         )}
 
                         {artwork.description && (
                           <p className="mt-3 text-sm leading-6 text-stone-500">
-                            {artwork.description}
+                            {
+                              artwork.description
+                            }
                           </p>
                         )}
 
                         <p className="mt-5 text-xs text-stone-400">
                           From{" "}
-                          {studio?.name ??
-                            artwork.studio_slug}
+                          {studioNames[
+                            artwork
+                              .studio_slug
+                          ] ??
+                            artwork
+                              .studio_slug}
                         </p>
                       </div>
                     </Link>
-                  );
-                })}
+                  ),
+                )}
               </div>
             )}
         </section>
