@@ -37,7 +37,8 @@ export async function POST(request: Request) {
     if (userError || !user) {
       return NextResponse.json(
         {
-          error: "Your login could not be verified.",
+          error:
+            "Your login could not be verified.",
         },
         {
           status: 401,
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
     let body: {
       email?: unknown;
       ownerName?: unknown;
+      studioSlug?: unknown;
     };
 
     try {
@@ -93,7 +95,8 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json(
         {
-          error: "The invitation details are missing.",
+          error:
+            "The invitation details are missing.",
         },
         {
           status: 400,
@@ -111,10 +114,28 @@ export async function POST(request: Request) {
         ? body.ownerName.trim()
         : "";
 
+    const studioSlug =
+      typeof body.studioSlug === "string"
+        ? body.studioSlug.trim().toLowerCase()
+        : "";
+
     if (!email) {
       return NextResponse.json(
         {
-          error: "An email address is required.",
+          error:
+            "An email address is required.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    if (!studioSlug) {
+      return NextResponse.json(
+        {
+          error:
+            "A Studio address is required.",
         },
         {
           status: 400,
@@ -123,7 +144,36 @@ export async function POST(request: Request) {
     }
 
     /*
-     * 5. Send the invitation.
+     * 5. Confirm the Studio actually exists.
+     */
+    const {
+      data: studio,
+      error: studioError,
+    } = await supabaseAdmin
+      .from("studios")
+      .select("slug")
+      .eq("slug", studioSlug)
+      .maybeSingle();
+
+    if (studioError || !studio) {
+      console.error(
+        "Could not verify Studio:",
+        studioError,
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "The Studio could not be found.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    /*
+     * 6. Send the invitation.
      */
     const {
       data,
@@ -134,6 +184,7 @@ export async function POST(request: Request) {
         {
           data: {
             owner_name: ownerName,
+            studio_slug: studioSlug,
           },
 
           redirectTo:
@@ -157,10 +208,57 @@ export async function POST(request: Request) {
       );
     }
 
+    const invitedUserId =
+      data.user?.id;
+
+    if (!invitedUserId) {
+      return NextResponse.json(
+        {
+          error:
+            "The invitation was sent, but the new user ID could not be found.",
+        },
+        {
+          status: 500,
+        },
+      );
+    }
+
+    /*
+     * 7. Link the invited user to their Studio.
+     */
+    const {
+      error: linkError,
+    } = await supabaseAdmin
+      .from("studio_members")
+      .insert({
+        user_id: invitedUserId,
+        studio_slug: studioSlug,
+        role: "owner",
+      });
+
+    if (linkError) {
+      console.error(
+        "Could not link Studio owner:",
+        linkError,
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "The invitation was sent, but the Studio could not be linked to the new owner.",
+        },
+        {
+          status: 500,
+        },
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      userId: data.user?.id ?? null,
-      email: data.user?.email ?? email,
+      userId: invitedUserId,
+      email:
+        data.user?.email ?? email,
+      studioSlug,
     });
   } catch (error) {
     console.error(

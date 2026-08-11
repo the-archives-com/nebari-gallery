@@ -88,10 +88,6 @@ export default function AccountPage() {
     router.refresh();
   }
 
-  /*
-   * Studio Nebari is currently the administration Studio.
-   * Other Studio owners will not see the administration section.
-   */
   const isNebariAdmin =
     membership?.studio_slug === "nebari";
 
@@ -109,8 +105,6 @@ export default function AccountPage() {
     <main className="min-h-screen bg-stone-50 px-6 py-16">
       <div className="mx-auto max-w-lg space-y-10">
 
-        {/* PAGE HEADER */}
-
         <header className="space-y-4 text-center">
           <p className="text-4xl">🍁</p>
 
@@ -122,8 +116,6 @@ export default function AccountPage() {
             Your Nebari Gallery account.
           </p>
         </header>
-
-        {/* ACCOUNT CARD */}
 
         <section className="space-y-6 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
 
@@ -162,6 +154,7 @@ export default function AccountPage() {
             >
               Open My Studio
             </Link>
+          )}
 
           <Link
             href="/update-password"
@@ -178,8 +171,6 @@ export default function AccountPage() {
             Sign Out
           </button>
         </section>
-
-        {/* NEBARI ADMINISTRATION */}
 
         {isNebariAdmin && (
           <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
@@ -208,8 +199,6 @@ export default function AccountPage() {
 
           </section>
         )}
-
-        {/* FOOTER */}
 
         <footer className="flex justify-center gap-4 text-xs text-stone-400">
           <Link

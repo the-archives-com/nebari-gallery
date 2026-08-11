@@ -7,8 +7,16 @@ import {
 } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { getStudio } from "../../../lib/studios";
 import { supabase } from "../../../lib/supabase";
+
+type Studio = {
+  slug: string;
+  name: string;
+  owner: string;
+  description: string | null;
+  icon: string | null;
+  colour: string | null;
+};
 
 type Artwork = {
   id: number;
@@ -24,45 +32,104 @@ export default function StudioPage() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
 
-  const studio = getStudio(params.slug);
-  const justHungId = searchParams.get("justHung");
+  const justHungId =
+    searchParams.get("justHung");
 
-  const [artworks, setArtworks] = useState<Artwork[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [studio, setStudio] =
+    useState<Studio | null>(null);
+
+  const [artworks, setArtworks] =
+    useState<Artwork[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [notFound, setNotFound] =
+    useState(false);
 
   useEffect(() => {
-    async function loadArtworks() {
-      if (!studio) {
+    async function loadStudio() {
+      setLoading(true);
+      setNotFound(false);
+
+      const {
+        data: studioData,
+        error: studioError,
+      } = await supabase
+        .from("studios")
+        .select(
+          "slug, name, owner, description, icon, colour",
+        )
+        .eq("slug", params.slug)
+        .maybeSingle();
+
+      if (studioError) {
+        console.error(
+          "Could not load Studio:",
+          studioError,
+        );
+
+        setNotFound(true);
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
+      if (!studioData) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      setStudio(studioData);
+
+      const {
+        data: artworkData,
+        error: artworkError,
+      } = await supabase
         .from("studio_artworks")
         .select("*")
-        .eq("studio_slug", studio.slug)
-        .order("created_at", { ascending: false });
+        .eq("studio_slug", params.slug)
+        .order("created_at", {
+          ascending: false,
+        });
 
-      if (error) {
-        console.error("Could not load artwork:", error);
+      if (artworkError) {
+        console.error(
+          "Could not load artwork:",
+          artworkError,
+        );
+
+        setArtworks([]);
         setLoading(false);
         return;
       }
 
-      setArtworks(data ?? []);
+      setArtworks(artworkData ?? []);
       setLoading(false);
     }
 
-    loadArtworks();
-  }, [studio]);
+    loadStudio();
+  }, [params.slug]);
 
-  if (!studio) {
+  if (loading) {
     return (
       <main className="min-h-screen bg-stone-50 px-6 py-16">
-        <div className="mx-auto max-w-xl space-y-6 text-center">
-          <p className="text-3xl">🌱</p>
+        <p className="text-center italic text-stone-500">
+          🌿 Opening the Studio...
+        </p>
+      </main>
+    );
+  }
 
-          <h1 className="text-3xl font-light">
+  if (notFound || !studio) {
+    return (
+      <main className="min-h-screen bg-stone-50 px-6 py-16">
+        <div className="mx-auto max-w-xl space-y-8 text-center">
+          <p className="text-4xl">
+            🌱
+          </p>
+
+          <h1 className="text-3xl font-light text-stone-800">
             This Studio hasn&apos;t opened yet.
           </h1>
 
@@ -92,27 +159,37 @@ export default function StudioPage() {
 
         <header className="mx-auto max-w-2xl space-y-5 text-center">
           <p className="text-4xl">
-            {studio.symbol}
+            {studio.icon || "🌿"}
           </p>
 
-          <h1 className="text-4xl font-light tracking-wide sm:text-6xl">
+          <h1 className="text-4xl font-light tracking-wide text-stone-800 sm:text-6xl">
             {studio.name}
           </h1>
 
-          <p className="text-lg leading-8 text-stone-600">
-            {studio.subtitle}
-          </p>
+          {studio.owner && (
+            <p className="text-sm text-stone-400">
+              A Studio by {studio.owner}
+            </p>
+          )}
+
+          {studio.description && (
+            <p className="text-lg leading-8 text-stone-600">
+              {studio.description}
+            </p>
+          )}
         </header>
 
-        <section className="mx-auto max-w-2xl rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-          <p className="text-sm font-medium uppercase tracking-widest text-stone-400">
-            About
-          </p>
+        {studio.description && (
+          <section className="mx-auto max-w-2xl rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
+            <p className="text-sm font-medium uppercase tracking-widest text-stone-400">
+              About
+            </p>
 
-          <p className="mt-5 leading-8 text-stone-700">
-            {studio.about}
-          </p>
-        </section>
+            <p className="mt-5 leading-8 text-stone-700">
+              {studio.description}
+            </p>
+          </section>
+        )}
 
         <div className="flex justify-center">
           <Link
@@ -150,16 +227,10 @@ export default function StudioPage() {
             </p>
           </div>
 
-          {loading && (
-            <p className="text-center italic text-stone-500">
-              🌿 Opening the Studio...
-            </p>
-          )}
-
-          {!loading && artworks.length === 0 && (
+          {artworks.length === 0 && (
             <div className="mx-auto max-w-md rounded-2xl border border-dashed border-stone-300 bg-white p-10 text-center">
               <p className="text-3xl">
-                {studio.symbol}
+                {studio.icon || "🌿"}
               </p>
 
               <p className="mt-4 text-stone-500">
@@ -168,7 +239,7 @@ export default function StudioPage() {
             </div>
           )}
 
-          {!loading && artworks.length > 0 && (
+          {artworks.length > 0 && (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {artworks.map((artwork) => (
                 <article
@@ -185,7 +256,8 @@ export default function StudioPage() {
                     hover:-translate-y-1
                     hover:shadow-2xl
                     ${
-                      justHungId === String(artwork.id)
+                      justHungId ===
+                      String(artwork.id)
                         ? "scale-[1.02] ring-4 ring-stone-300 shadow-2xl"
                         : ""
                     }
