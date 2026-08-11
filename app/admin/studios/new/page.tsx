@@ -126,8 +126,9 @@ export default function NewStudioPage() {
             `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          email: ownerEmail.trim(),
-          ownerName: owner.trim(),
+        email: ownerEmail.trim(),
+        ownerName: owner.trim(),
+        studioSlug: finalSlug,
         }),
       },
     );
