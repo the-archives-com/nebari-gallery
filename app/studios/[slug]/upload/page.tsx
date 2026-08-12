@@ -37,6 +37,9 @@ export default function UploadArtworkPage() {
   const [loadingStudio, setLoadingStudio] =
     useState(true);
 
+  const [authorised, setAuthorised] =
+    useState(false);
+
   const [title, setTitle] =
     useState("");
 
@@ -55,8 +58,52 @@ export default function UploadArtworkPage() {
   const [saving, setSaving] =
     useState(false);
 
+  const [message, setMessage] =
+    useState("");
+
   useEffect(() => {
     async function loadStudio() {
+      setLoadingStudio(true);
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        router.replace("/login");
+        return;
+      }
+
+      const {
+        data: membership,
+        error: membershipError,
+      } = await supabase
+        .from("studio_members")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("studio_slug", params.slug)
+        .eq("role", "owner")
+        .maybeSingle();
+
+      if (
+        membershipError ||
+        !membership
+      ) {
+        console.error(
+          "Could not verify Studio ownership:",
+          membershipError,
+        );
+
+        router.replace(
+          `/studios/${params.slug}`,
+        );
+
+        return;
+      }
+
+      setAuthorised(true);
+
       const { data, error } = await supabase
         .from("studios")
         .select(
@@ -77,25 +124,40 @@ export default function UploadArtworkPage() {
     }
 
     loadStudio();
-  }, [params.slug]);
+  }, [params.slug, router]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   async function handleSubmit() {
-    if (!studio) {
-      alert("Studio not found.");
+    if (!studio || !authorised) {
+      setMessage(
+        "You do not have permission to add work to this Studio.",
+      );
       return;
     }
 
     if (!selectedFile) {
-      alert("Choose an artwork first.");
+      setMessage(
+        "Choose an image to hang first.",
+      );
       return;
     }
 
     if (!title.trim()) {
-      alert("Give the artwork a title.");
+      setMessage(
+        "Give this piece a title.",
+      );
       return;
     }
 
     setSaving(true);
+    setMessage("");
 
     try {
       const safeFileName =
@@ -181,175 +243,255 @@ export default function UploadArtworkPage() {
         error,
       );
 
-      const message =
+      const errorText =
         error instanceof Error
           ? error.message
           : "Something unexpected happened.";
 
-      alert(
-        `Could not hang artwork: ${message}`,
+      setMessage(
+        `Could not hang artwork: ${errorText}`,
       );
 
       setSaving(false);
     }
   }
 
+  function handleFileChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file =
+      event.target.files?.[0] ?? null;
+
+    if (previewUrl) {
+      URL.revokeObjectURL(
+        previewUrl,
+      );
+    }
+
+    setSelectedFile(file);
+    setMessage("");
+
+    if (file) {
+      setPreviewUrl(
+        URL.createObjectURL(file),
+      );
+    } else {
+      setPreviewUrl(null);
+    }
+  }
+
   if (loadingStudio) {
     return (
-      <main className="min-h-screen bg-stone-50 px-6 py-16">
-        <p className="text-center italic text-stone-500">
-          🌿 Opening the Studio...
+      <main className="min-h-screen bg-background px-6 py-16 text-foreground">
+
+        <p className="text-center italic text-nebari-muted">
+          Opening your Studio...
         </p>
+
       </main>
     );
   }
 
   if (!studio) {
     return (
-      <main className="min-h-screen bg-stone-50 px-6 py-16">
-        <div className="mx-auto max-w-xl space-y-6 text-center">
-          <p className="text-3xl">
-            🌱
+      <main className="min-h-screen bg-background px-6 py-20 text-foreground">
+
+        <div className="mx-auto max-w-xl text-center">
+
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-maple">
+            Nebari
           </p>
 
-          <h1 className="text-3xl font-light">
+          <h1 className="nebari-serif mt-4 text-4xl text-nebari-ink">
             Studio not found.
           </h1>
 
           <Link
             href="/studios"
-            className="text-stone-600 hover:text-stone-900"
+            className="mt-6 inline-block text-sm text-nebari-muted transition-colors hover:text-nebari-green"
           >
             ← Return to Studios
           </Link>
+
         </div>
+
       </main>
     );
   }
 
-  return (
-    <main className="min-h-screen bg-stone-50 px-6 py-16">
-      <div className="mx-auto max-w-xl space-y-10">
+  const inputClass =
+    "mt-2 w-full rounded-xl border border-nebari-border bg-background px-4 py-3 text-nebari-ink outline-none transition-all placeholder:text-nebari-muted/60 focus:border-nebari-sage focus:ring-2 focus:ring-nebari-sage/20";
 
-        <header className="space-y-3 text-center">
-          <p className="text-3xl">
-            {studio.icon || "🌿"}
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+
+      {/* BRAND BAR */}
+
+      <div className="border-b border-nebari-border bg-nebari-surface/70">
+
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
+
+          <Link
+            href="/"
+            className="nebari-brand text-sm font-medium text-nebari-ink"
+          >
+            Studio Nebari
+          </Link>
+
+          <Link
+            href={`/studios/${studio.slug}`}
+            className="text-xs font-medium uppercase tracking-[0.14em] text-nebari-muted transition-colors hover:text-nebari-green"
+          >
+            My Studio
+          </Link>
+
+        </div>
+
+      </div>
+
+      <div className="mx-auto max-w-2xl px-6 py-16">
+
+        {/* HEADER */}
+
+        <header className="text-center">
+
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-maple">
+            {studio.name}
           </p>
 
-          <h1 className="text-4xl font-light tracking-wide">
-            Hang Artwork
+          <h1 className="nebari-serif mt-5 text-5xl font-medium tracking-tight text-nebari-ink sm:text-6xl">
+            Hang something new.
           </h1>
 
-          <p className="text-stone-600">
-            Adding something to {studio.name}
+          <div className="mx-auto mt-6 flex items-center justify-center gap-3">
+
+            <span className="h-px w-12 bg-nebari-maple/40" />
+
+            <span className="text-sm text-nebari-maple">
+              ◆
+            </span>
+
+            <span className="h-px w-12 bg-nebari-maple/40" />
+
+          </div>
+
+          <p className="mx-auto mt-6 max-w-md text-sm leading-7 text-nebari-muted">
+            Add a finished piece, a photograph,
+            or something still finding its way.
           </p>
+
         </header>
 
-        <section className="space-y-6 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+        {/* FORM */}
 
-          <div>
-            <p className="text-sm font-medium text-stone-700">
-              Artwork
+        <section className="mt-10 overflow-hidden rounded-2xl border border-nebari-border bg-nebari-surface shadow-sm">
+
+          {/* THE WORK */}
+
+          <div className="border-b border-nebari-border p-8">
+
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-green">
+              The Work
             </p>
+
+            <h2 className="nebari-serif mt-2 text-2xl text-nebari-ink">
+              What are you hanging?
+            </h2>
 
             <input
               id="artwork"
               type="file"
               accept="image/*"
-              onChange={(event) => {
-                const file =
-                  event.target.files?.[0] ??
-                  null;
-
-                setSelectedFile(file);
-
-                if (previewUrl) {
-                  URL.revokeObjectURL(
-                    previewUrl,
-                  );
-                }
-
-                if (file) {
-                  setPreviewUrl(
-                    URL.createObjectURL(
-                      file,
-                    ),
-                  );
-                } else {
-                  setPreviewUrl(null);
-                }
-              }}
+              onChange={handleFileChange}
               className="hidden"
             />
 
             <label
               htmlFor="artwork"
-              className="mt-3 flex cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-stone-300 bg-stone-50 px-6 py-8 text-center transition-all duration-300 hover:border-stone-500 hover:bg-stone-100"
+              className="mt-6 flex cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-nebari-border bg-nebari-paper/30 p-4 text-center transition-all duration-300 hover:border-nebari-sage hover:bg-nebari-paper/50"
             >
               {previewUrl ? (
                 <div className="w-full">
-                  <div className="overflow-hidden rounded-xl bg-stone-100">
+
+                  <div className="overflow-hidden rounded-xl bg-background">
                     <img
                       src={previewUrl}
                       alt="Artwork preview"
-                      className="max-h-96 w-full object-contain"
+                      className="max-h-[32rem] w-full object-contain"
                     />
                   </div>
 
-                  <p className="mt-4 font-medium text-stone-700">
-                    ✓ Ready to hang
+                  <p className="mt-4 text-sm font-medium text-nebari-ink">
+                    Ready to hang
                   </p>
 
-                  <p className="mt-1 text-sm text-stone-500">
-                    Tap the image to choose another piece.
+                  <p className="mt-1 text-xs text-nebari-muted">
+                    Select the image to choose another.
                   </p>
+
                 </div>
               ) : (
-                <div>
-                  <p className="text-4xl">
-                    🖼️
+                <div className="px-6 py-10">
+
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-nebari-border">
+                    <span className="nebari-serif text-xl text-nebari-maple">
+                      +
+                    </span>
+                  </div>
+
+                  <p className="mt-4 text-sm font-medium text-nebari-ink">
+                    Choose an image
                   </p>
 
-                  <p className="mt-3 font-medium text-stone-700">
-                    Choose Artwork
+                  <p className="mt-2 text-xs leading-5 text-nebari-muted">
+                    Select a photograph or image from your device.
                   </p>
 
-                  <p className="mt-1 text-sm text-stone-500">
-                    Tap here to select an image
-                  </p>
                 </div>
               )}
             </label>
+
+            <div className="mt-6">
+
+              <label
+                htmlFor="title"
+                className="block text-sm font-medium text-nebari-ink"
+              >
+                Title
+              </label>
+
+              <input
+                id="title"
+                value={title}
+                onChange={(event) =>
+                  setTitle(
+                    event.target.value,
+                  )
+                }
+                placeholder="Give this piece a name..."
+                className={inputClass}
+              />
+
+            </div>
+
           </div>
 
-          <div>
-            <label
-              htmlFor="title"
-              className="block text-sm font-medium text-stone-700"
-            >
-              Title
-            </label>
+          {/* THE STORY */}
 
-            <input
-              id="title"
-              value={title}
-              onChange={(event) =>
-                setTitle(
-                  event.target.value,
-                )
-              }
-              placeholder="Give this piece a name..."
-              className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-stone-300"
-            />
-          </div>
+          <div className="border-b border-nebari-border p-8">
 
-          <div>
-            <label
-              htmlFor="description"
-              className="block text-sm font-medium text-stone-700"
-            >
-              About this piece
-            </label>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-green">
+              The Story
+            </p>
+
+            <h2 className="nebari-serif mt-2 text-2xl text-nebari-ink">
+              A few words, if you like.
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-nebari-muted">
+              What were you making, noticing or
+              thinking about? This part is optional.
+            </p>
 
             <textarea
               id="description"
@@ -360,15 +502,32 @@ export default function UploadArtworkPage() {
                   event.target.value,
                 )
               }
-              placeholder="A few words about the work..."
-              className="mt-2 w-full resize-y rounded-xl border border-stone-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-stone-300"
+              placeholder="Tell us something about the work..."
+              className={`${inputClass} resize-y leading-7`}
             />
+
           </div>
 
-          <div>
+          {/* THE COLLECTION */}
+
+          <div className="p-8">
+
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-green">
+              The Collection
+            </p>
+
+            <h2 className="nebari-serif mt-2 text-2xl text-nebari-ink">
+              Where does it belong?
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-nebari-muted">
+              Collections help visitors browse your
+              Studio without changing how you work.
+            </p>
+
             <label
               htmlFor="category"
-              className="block text-sm font-medium text-stone-700"
+              className="mt-6 block text-sm font-medium text-nebari-ink"
             >
               Collection
             </label>
@@ -381,7 +540,7 @@ export default function UploadArtworkPage() {
                   event.target.value,
                 )
               }
-              className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-4 py-3"
+              className={inputClass}
             >
               <option value="">
                 Choose a collection...
@@ -397,32 +556,83 @@ export default function UploadArtworkPage() {
                   </option>
                 ),
               )}
+
             </select>
+
           </div>
 
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={saving}
-            className="w-full rounded-full bg-stone-800 px-8 py-3 text-stone-50 transition-all duration-300 hover:bg-stone-700 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
-          >
-            {saving
-              ? "🌿 Hanging Artwork..."
-              : "🖼️ Hang in Studio"}
-          </button>
+          {/* HANG */}
+
+          <div className="border-t border-nebari-border bg-nebari-paper/30 px-8 py-7">
+
+            {message && (
+              <p
+                role="alert"
+                className="mb-5 rounded-xl border border-nebari-border bg-nebari-surface p-4 text-center text-sm leading-6 text-nebari-maple"
+              >
+                {message}
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={saving}
+              className="w-full rounded-full bg-nebari-green px-8 py-3.5 text-sm text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
+            >
+              {saving
+                ? "Hanging your work..."
+                : "Hang in Studio"}
+            </button>
+
+            <p className="mt-4 text-center text-xs leading-5 text-nebari-muted">
+              This adds the piece to your Studio.
+              Gallery submission remains your choice.
+            </p>
+
+          </div>
 
         </section>
 
-        <div className="text-center">
+        <div className="mt-8 text-center">
+
           <Link
             href={`/studios/${studio.slug}`}
-            className="text-sm text-stone-600 hover:text-stone-900"
+            className="text-sm text-nebari-muted transition-colors hover:text-nebari-green"
           >
             ← Return to {studio.name}
           </Link>
+
         </div>
 
       </div>
+
+      {/* TIMBER FOOTER */}
+
+      <footer className="mt-12 border-t border-[#2b211c] bg-[#3b2f2a]">
+
+        <div className="mx-auto max-w-6xl px-6 py-8 text-center">
+
+          <div className="mx-auto mb-4 flex items-center justify-center gap-3">
+
+            <span className="h-px w-12 bg-[#6b1d1d]" />
+
+            <span className="text-[#6b1d1d]">
+              ◆
+            </span>
+
+            <span className="h-px w-12 bg-[#6b1d1d]" />
+
+          </div>
+
+          <p className="nebari-brand text-xs text-[#e8e1d5]">
+            Roots first. Growth second.
+          </p>
+
+        </div>
+
+      </footer>
+
     </main>
   );
 }

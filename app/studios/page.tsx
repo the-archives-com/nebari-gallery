@@ -1,9 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import StudioPlantMark from "../components/StudioPlantMark";
 
 import { supabase } from "../../lib/supabase";
+
+import {
+  resolveStudioAccent,
+} from "../../lib/studio-accents";
 
 type Studio = {
   slug: string;
@@ -33,7 +43,9 @@ type StudioOwnerMap = {
 };
 
 export default function StudiosPage() {
-  const [studios, setStudios] = useState<Studio[]>([]);
+  const [studios, setStudios] =
+    useState<Studio[]>([]);
+
   const [artworks, setArtworks] =
     useState<RecentArtwork[]>([]);
 
@@ -43,7 +55,9 @@ export default function StudiosPage() {
   const [studioOwners, setStudioOwners] =
     useState<StudioOwnerMap>({});
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
+
   const [errorMessage, setErrorMessage] =
     useState("");
 
@@ -91,9 +105,21 @@ export default function StudiosPage() {
       }
 
       if (artworkResult.error) {
-        console.error(
-          "Could not load recent Studio work:",
-          artworkResult.error,
+        console.log(
+          "Recent Studio work error details:",
+          {
+            message:
+              artworkResult.error.message,
+
+            details:
+              artworkResult.error.details,
+
+            hint:
+              artworkResult.error.hint,
+
+            code:
+              artworkResult.error.code,
+          },
         );
       }
 
@@ -104,14 +130,25 @@ export default function StudiosPage() {
       const owners: StudioOwnerMap = {};
 
       for (const studio of loadedStudios) {
-        names[studio.slug] = studio.name;
+        names[studio.slug] =
+          studio.name;
+
         owners[studio.slug] =
-          studio.owner || studio.name;
+          studio.owner ||
+          studio.name;
       }
 
-      setStudios(loadedStudios);
-      setStudioNames(names);
-      setStudioOwners(owners);
+      setStudios(
+        loadedStudios,
+      );
+
+      setStudioNames(
+        names,
+      );
+
+      setStudioOwners(
+        owners,
+      );
 
       setArtworks(
         artworkResult.data ?? [],
@@ -128,42 +165,51 @@ export default function StudiosPage() {
    *
    * One recent non-Gallery piece from each Studio.
    *
-   * Because artworks arrive newest-first, the first
-   * suitable piece we encounter for each Studio is
-   * automatically that Studio's newest one.
+   * Because artworks arrive newest-first,
+   * the first suitable piece we encounter
+   * for each Studio is that Studio's newest one.
    */
-  const studioActivity = useMemo(() => {
-    const selected =
-      new Map<string, RecentArtwork>();
 
-    for (const artwork of artworks) {
-      if (
-        artwork.gallery_status ===
-        "featured"
+  const studioActivity =
+    useMemo(() => {
+      const selected =
+        new Map<
+          string,
+          RecentArtwork
+        >();
+
+      for (
+        const artwork of artworks
       ) {
-        continue;
+        if (
+          artwork.gallery_status ===
+          "featured"
+        ) {
+          continue;
+        }
+
+        if (
+          !selected.has(
+            artwork.studio_slug,
+          )
+        ) {
+          selected.set(
+            artwork.studio_slug,
+            artwork,
+          );
+        }
+
+        if (
+          selected.size >= 6
+        ) {
+          break;
+        }
       }
 
-      if (
-        !selected.has(
-          artwork.studio_slug,
-        )
-      ) {
-        selected.set(
-          artwork.studio_slug,
-          artwork,
-        );
-      }
-
-      if (selected.size >= 6) {
-        break;
-      }
-    }
-
-    return Array.from(
-      selected.values(),
-    );
-  }, [artworks]);
+      return Array.from(
+        selected.values(),
+      );
+    }, [artworks]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -171,6 +217,7 @@ export default function StudiosPage() {
       {/* TOP BRAND BAR */}
 
       <div className="border-b border-nebari-border bg-nebari-surface/70">
+
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
 
           <Link
@@ -207,6 +254,7 @@ export default function StudiosPage() {
           </nav>
 
         </div>
+
       </div>
 
       <div className="mx-auto max-w-5xl px-6 py-16 sm:py-20">
@@ -279,8 +327,7 @@ export default function StudiosPage() {
                       </h2>
 
                       <p className="mt-1 text-sm text-nebari-muted">
-                        A glimpse of what
-                        people are working on.
+                        A glimpse of what people are working on.
                       </p>
 
                     </div>
@@ -314,7 +361,7 @@ export default function StudiosPage() {
                               className="aspect-[4/3] w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
                             />
 
-                            {/* DESKTOP HOVER OVERLAY */}
+                            {/* DESKTOP HOVER */}
 
                             <div className="absolute inset-0 hidden flex-col justify-end bg-[#2b211c]/80 p-5 opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:flex">
 
@@ -355,7 +402,7 @@ export default function StudiosPage() {
 
                             </div>
 
-                            {/* IMAGE LINK */}
+                            {/* MOBILE IMAGE LINK */}
 
                             <Link
                               href={`/studios/${artwork.studio_slug}/artwork/${artwork.id}`}
@@ -365,7 +412,7 @@ export default function StudiosPage() {
 
                           </div>
 
-                          {/* MOBILE + STANDARD CAPTION */}
+                          {/* CAPTION */}
 
                           <div className="px-1 pt-3">
 
@@ -390,7 +437,9 @@ export default function StudiosPage() {
                                 ] ??
                                 artwork
                                   .studio_slug}
+
                               {" · "}
+
                               {studioNames[
                                 artwork
                                   .studio_slug
@@ -421,8 +470,7 @@ export default function StudiosPage() {
                   </h2>
 
                   <p className="mt-1 text-sm text-nebari-muted">
-                    Open a door and see
-                    what someone is making.
+                    Open a door and see what someone is making.
                   </p>
 
                 </div>
@@ -435,8 +483,7 @@ export default function StudiosPage() {
                     </p>
 
                     <p className="mt-3 text-sm leading-6 text-nebari-muted">
-                      The doors are quiet
-                      for now.
+                      The doors are quiet for now.
                     </p>
 
                   </div>
@@ -464,48 +511,77 @@ export default function StudiosPage() {
                     <div className="space-y-3">
 
                       {studios.map(
-                        (studio) => (
-                          <Link
-                            key={
-                              studio.slug
-                            }
-                            href={`/studios/${studio.slug}`}
-                            className="group grid grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_48px] items-center gap-6 rounded-2xl border border-nebari-border bg-nebari-surface px-5 py-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-nebari-sage hover:shadow-lg"
-                          >
+                        (studio) => {
+                          const accent =
+                            resolveStudioAccent(
+                              studio.colour,
+                            );
 
-                            <div className="min-w-0">
+                          return (
+                            <Link
+                              key={
+                                studio.slug
+                              }
+                              href={`/studios/${studio.slug}`}
+                              className="group grid grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_48px] items-center gap-6 rounded-2xl border border-nebari-border bg-nebari-surface px-5 py-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-nebari-sage hover:shadow-lg"
+                            >
 
-                              <p className="nebari-serif truncate text-xl font-medium text-nebari-ink">
-                                {
-                                  studio.name
-                                }
+                              {/* STUDIO IDENTITY */}
+
+                              <div className="flex min-w-0 items-center gap-4">
+
+                                <div
+                                  className="flex h-10 w-10 shrink-0 items-center justify-center"
+                                  title={
+                                    accent.name
+                                  }
+                                >
+                                  <StudioPlantMark
+                                    plant={
+                                      accent.mark
+                                    }
+                                    colour={
+                                      accent.colour
+                                    }
+                                  />
+                                </div>
+
+                                <div className="min-w-0">
+
+                                  <p className="nebari-serif truncate text-xl font-medium text-nebari-ink">
+                                    {studio.name}
+                                  </p>
+
+                                  {studio.description && (
+                                    <p className="mt-1 truncate text-sm text-nebari-muted">
+                                      {studio.description}
+                                    </p>
+                                  )}
+
+                                </div>
+
+                              </div>
+
+                              {/* ARTIST */}
+
+                              <p className="truncate text-sm text-nebari-muted">
+                                {studio.owner ||
+                                  "—"}
                               </p>
 
-                              {studio.description && (
-                                <p className="mt-1 truncate text-sm text-nebari-muted">
-                                  {
-                                    studio.description
-                                  }
-                                </p>
-                              )}
+                              {/* OPEN */}
 
-                            </div>
+                              <div className="text-right">
 
-                            <p className="truncate text-sm text-nebari-muted">
-                              {studio.owner ||
-                                "—"}
-                            </p>
+                                <span className="text-xl text-nebari-ink transition-all duration-300 group-hover:translate-x-1 group-hover:text-nebari-green">
+                                  →
+                                </span>
 
-                            <div className="text-right">
+                              </div>
 
-                              <span className="text-xl text-nebari-ink transition-all duration-300 group-hover:translate-x-1 group-hover:text-nebari-green">
-                                →
-                              </span>
-
-                            </div>
-
-                          </Link>
-                        ),
+                            </Link>
+                          );
+                        },
                       )}
 
                     </div>

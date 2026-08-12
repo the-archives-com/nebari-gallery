@@ -25,14 +25,11 @@ const cormorant = Cormorant_Garamond({
 
 
 export const metadata: Metadata = {
-  title: {
-    default: "Studio Nebari",
-    template: "%s · Studio Nebari",
-  },
-
+  title: "Studio Nebari",
   description:
-    "A quiet corner for creating, observing and growing.",
+    "A quiet place for creative work to grow.",
 };
+
 
 
 export default function RootLayout({

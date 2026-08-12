@@ -13,7 +13,8 @@ export default function NewStudioPage() {
   const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
   const [owner, setOwner] = useState("");
-  const [description, setDescription] = useState("");
+
+
   const [icon, setIcon] = useState("🌿");
   const [colour, setColour] = useState("stone");
 
@@ -128,8 +129,7 @@ export default function NewStudioPage() {
             studioName:
               name.trim(),
 
-            description:
-              description.trim() || null,
+            description: null,
 
             icon:
               icon.trim() || "🌿",
@@ -396,28 +396,7 @@ export default function NewStudioPage() {
                 </span>
               </p>
             </div>
-
-            <div>
-              <label
-                htmlFor="description"
-                className={labelClass}
-              >
-                About the Studio
-              </label>
-
-              <textarea
-                id="description"
-                rows={5}
-                value={description}
-                onChange={(event) =>
-                  setDescription(
-                    event.target.value,
-                  )
-                }
-                placeholder="A quiet place for colour, ideas and things worth making."
-                className={`${inputClass} resize-y`}
-              />
-            </div>
+            
 
           </section>
 

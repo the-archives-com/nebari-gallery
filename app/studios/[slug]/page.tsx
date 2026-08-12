@@ -12,6 +12,12 @@ import {
 } from "react";
 
 import { supabase } from "../../../lib/supabase";
+import StudioPlantMark from "../../components/StudioPlantMark";
+
+import {
+  resolveStudioAccent,
+} from "../../../lib/studio-accents";
+
 
 type Studio = {
   slug: string;
@@ -308,6 +314,11 @@ export default function StudioPage() {
     );
   }
 
+  const studioAccent =
+  resolveStudioAccent(
+    studio.colour,
+  );
+
   return (
     <main className="min-h-screen bg-background text-foreground">
 
@@ -355,58 +366,126 @@ export default function StudioPage() {
 
       <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
 
-        {/* STUDIO HEADER */}
+       {/* STUDIO ENTRANCE */}
 
-        <header className="mx-auto max-w-3xl text-center">
+<div className="relative mx-auto max-w-4xl overflow-visible rounded-[2rem] border border-nebari-border bg-nebari-surface shadow-sm">
 
-          <p className="nebari-brand text-xs text-nebari-maple">
-            Personal Studio
-          </p>
+  {/* QUIET TOP BAND */}
 
-          <h1 className="nebari-serif mt-5 text-5xl font-medium tracking-tight text-nebari-ink sm:text-6xl">
-            {studio.name}
-          </h1>
+  <div className="border-b border-nebari-border bg-nebari-paper/30 px-8 py-4 text-center">
 
-          {studio.owner && (
-            <p className="mt-4 text-sm text-nebari-muted">
-              A Studio by {studio.owner}
-            </p>
-          )}
+    <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-nebari-muted">
+      Personal Studio · Nebari Gallery
+    </p>
 
-          <div className="mx-auto mt-6 flex items-center justify-center gap-3">
+  </div>
 
-            <span className="h-px w-12 bg-nebari-maple/40" />
+  {/* NAMEPLATE */}
 
-            <span className="text-sm text-nebari-maple">
-              ◆
-            </span>
+  <header className="px-8 py-12 text-center sm:px-12 sm:py-14">
 
-            <span className="h-px w-12 bg-nebari-maple/40" />
+    <p className="nebari-brand text-xs text-nebari-maple">
+      The Studio of
+    </p>
 
-          </div>
+    <h1 className="nebari-serif mt-5 text-5xl font-medium tracking-tight text-nebari-ink sm:text-6xl">
+      {studio.name}
+    </h1>
 
-        </header>
+    {studio.owner && (
+      <p className="mt-4 text-sm tracking-wide text-nebari-muted">
+        {studio.owner}
+      </p>
+    )}
 
-        {/* ABOUT */}
+    <div className="mx-auto mt-7 flex items-center justify-center gap-3">
 
-        {studio.description && (
-          <section className="mx-auto mt-10 max-w-2xl rounded-2xl border border-nebari-border bg-nebari-surface px-8 py-7 shadow-sm">
+      <span className="h-px w-14 bg-nebari-maple/40" />
 
-            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-green">
-              About
-            </p>
+      <span
+        className="text-sm"
+        style={{
+          color: studioAccent.colour,
+        }}
+      >
+        ◆
+      </span>
 
-            <p className="mt-4 leading-8 text-nebari-muted">
-              {studio.description}
-            </p>
+      <span className="h-px w-14 bg-nebari-maple/40" />
 
-          </section>
-        )}
+    </div>
 
-        {/* OWNER CONTROL */}
+    {/* DESCRIPTION */}
+
+    {studio.description ? (
+      <div className="mx-auto mt-8 max-w-2xl">
+
+        <p className="whitespace-pre-wrap text-base leading-8 text-nebari-muted">
+          {studio.description}
+        </p>
+
+      </div>
+    ) : isOwner ? (
+      <div className="mx-auto mt-8 max-w-lg rounded-2xl border border-dashed border-nebari-border bg-background/50 px-7 py-6">
+
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-nebari-maple">
+          Your Studio
+        </p>
+
+        <p className="nebari-serif mt-3 text-xl text-nebari-ink">
+          Make this Studio yours.
+        </p>
+
+        <p className="mt-2 text-sm leading-6 text-nebari-muted">
+          Add a few words about what you&apos;re making,
+          exploring or noticing at the moment.
+        </p>
+
+        <Link
+          href={`/studios/${studio.slug}/edit`}
+          className="mt-4 inline-block text-sm text-nebari-green transition-colors hover:text-nebari-maple"
+        >
+          Add an introduction →
+        </Link>
+
+      </div>
+    ) : null}
+
+  </header>
+
+  {/* STUDIO THRESHOLD */}
+
+  <div className="border-t border-nebari-border bg-nebari-paper/30 px-8 py-4">
+
+    <p className="text-center text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-muted">
+      Step inside · Look around · Follow the work
+    </p>
+
+  </div>
+
+  {/* STUDIO PLANT SIGNATURE */}
+
+  <StudioPlantMark
+    plant={studioAccent.mark}
+    colour={studioAccent.colour}
+    name={studioAccent.name}
+    className="absolute right-6 top-16 scale-125"
+  />
+
+</div>
+
+
+        {/* OWNER CONTROLS */}
 
         {isOwner && (
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+
+            <Link
+              href={`/studios/${studio.slug}/edit`}
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-nebari-border bg-nebari-surface px-8 py-3 text-xs font-medium uppercase tracking-[0.12em] text-nebari-ink transition-all duration-300 hover:-translate-y-0.5 hover:border-nebari-sage hover:shadow-md active:translate-y-0"
+            >
+              Edit Studio
+            </Link>
 
             <Link
               href={`/studios/${studio.slug}/upload`}
@@ -604,7 +683,12 @@ export default function StudioPage() {
 
             <span className="h-px w-12 bg-[#6b1d1d]" />
 
-            <span className="text-[#6b1d1d]">
+            <span
+              className="text-sm"
+              style={{
+                color: studioAccent.colour,
+              }}
+            >
               ◆
             </span>
 
