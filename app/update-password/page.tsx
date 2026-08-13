@@ -71,13 +71,15 @@ export default function UpdatePasswordPage() {
       return;
     }
 
-    setMessage(
-      "Your password is ready. Taking you to sign in...",
-    );
+      setMessage(
+        "Your password is ready. Taking you to sign in...",
+      );
 
-    setTimeout(() => {
-      router.replace("/login");
-    }, 1200);
+      await supabase.auth.signOut();
+
+      setTimeout(() => {
+        router.replace("/login");
+      }, 1200);
   }
 
   const inputClass =

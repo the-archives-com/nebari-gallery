@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { supabase } from "../../lib/supabase";
 
@@ -11,92 +11,173 @@ type Membership = {
   role: string;
 };
 
+type Studio = {
+  slug: string;
+  name: string;
+  owner: string | null;
+  icon: string | null;
+};
+
 export default function AccountPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
-  const [membership, setMembership] =
-    useState<Membership | null>(null);
+  const [memberships, setMemberships] =
+    useState<Membership[]>([]);
+  const [studios, setStudios] =
+    useState<Studio[]>([]);
 
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [loading, setLoading] =
+    useState(true);
+
+  const [message, setMessage] =
+    useState("");
 
   useEffect(() => {
     async function loadAccount() {
       setLoading(true);
       setMessage("");
 
+      /*
+       * 1. Find the signed-in user.
+       */
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError) {
-        console.error(
-          "Could not load signed-in user:",
-          userError,
-        );
-      }
-
-      if (!user) {
+      if (userError || !user) {
         router.replace("/login");
         return;
       }
 
       setEmail(user.email ?? "");
 
-      const { data, error } = await supabase
+      /*
+       * 2. Load every Studio membership
+       *    belonging to this user.
+       */
+      const {
+        data: membershipData,
+        error: membershipError,
+      } = await supabase
         .from("studio_members")
         .select("studio_slug, role")
-        .eq("user_id", user.id)
-        .maybeSingle();
+        .eq("user_id", user.id);
 
-      if (error) {
+      if (membershipError) {
         console.error(
-          "Could not load Studio membership:",
-          error,
+          "Could not load Studio memberships:",
+          membershipError,
         );
 
         setMessage(
-          "Your account is active, but we could not load your Studio.",
+          "Your Studio access could not be loaded.",
         );
 
         setLoading(false);
         return;
       }
 
-      if (!data) {
+      const loadedMemberships =
+        membershipData ?? [];
+
+      setMemberships(
+        loadedMemberships,
+      );
+
+      /*
+       * 3. Load the Studios associated
+       *    with those memberships.
+       */
+      const studioSlugs =
+        loadedMemberships.map(
+          (membership) =>
+            membership.studio_slug,
+        );
+
+      if (studioSlugs.length === 0) {
+        setStudios([]);
+        setLoading(false);
+        return;
+      }
+
+      const {
+        data: studioData,
+        error: studioError,
+      } = await supabase
+        .from("studios")
+        .select(
+          "slug, name, owner, icon",
+        )
+        .in("slug", studioSlugs);
+
+      if (studioError) {
+        console.error(
+          "Could not load Studios:",
+          studioError,
+        );
+
         setMessage(
-          "Your login is active, but no Studio is linked to this account yet.",
+          "Your Studio details could not be loaded.",
         );
 
         setLoading(false);
         return;
       }
 
-      setMembership(data);
+      setStudios(studioData ?? []);
       setLoading(false);
     }
 
     loadAccount();
   }, [router]);
 
-  async function handleSignOut() {
-    await supabase.auth.signOut();
+  /*
+   * The Nebari administration area is
+   * deliberately restricted to somebody
+   * who owns the special "nebari" Studio.
+   */
+  const isNebariAdmin =
+    memberships.some(
+      (membership) =>
+        membership.studio_slug ===
+          "nebari" &&
+        membership.role === "owner",
+    );
 
-    router.replace("/");
-    router.refresh();
+  /*
+   * Don't display the Nebari administration
+   * Studio as one of the person's normal
+   * creative Studios.
+   */
+  const personalMemberships =
+    memberships.filter(
+      (membership) =>
+        membership.studio_slug !==
+        "nebari",
+    );
+
+  function findStudio(
+    slug: string,
+  ) {
+    return studios.find(
+      (studio) =>
+        studio.slug === slug,
+    );
   }
 
-  const isNebariAdmin =
-    membership?.studio_slug === "nebari" &&
-    membership?.role === "owner";
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  }
 
   if (loading) {
     return (
       <main className="min-h-screen bg-background px-6 py-16 text-foreground">
         <p className="text-center italic text-nebari-muted">
-          Opening your Studio account...
+          Opening your account...
         </p>
       </main>
     );
@@ -104,12 +185,10 @@ export default function AccountPage() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-
       {/* TOP BRAND BAR */}
 
       <div className="border-b border-nebari-border bg-nebari-surface/70">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-
           <Link
             href="/"
             className="nebari-brand text-sm font-medium text-nebari-ink"
@@ -118,14 +197,6 @@ export default function AccountPage() {
           </Link>
 
           <nav className="flex items-center gap-7 text-xs font-medium uppercase tracking-[0.14em]">
-
-            <Link
-              href="/"
-              className="text-nebari-muted transition-colors hover:text-nebari-green"
-            >
-              Home
-            </Link>
-
             <Link
               href="/gallery"
               className="text-nebari-muted transition-colors hover:text-nebari-green"
@@ -139,28 +210,23 @@ export default function AccountPage() {
             >
               Studios
             </Link>
-
           </nav>
-
         </div>
       </div>
 
-      <div className="mx-auto max-w-lg space-y-10 px-6 py-16">
-
-        {/* ACCOUNT HEADER */}
+      <div className="mx-auto max-w-xl px-6 py-16">
+        {/* HEADER */}
 
         <header className="text-center">
-
-          <p className="nebari-brand text-xs text-nebari-maple">
-            Studio Nebari
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-maple">
+            Studio Access
           </p>
 
-          <h1 className="nebari-serif mt-5 text-5xl font-medium text-nebari-ink">
-            My Account
+          <h1 className="nebari-serif mt-5 text-5xl font-medium tracking-tight text-nebari-ink">
+            Your account.
           </h1>
 
-          <div className="mx-auto mt-5 flex items-center justify-center gap-3">
-
+          <div className="mx-auto mt-6 flex items-center justify-center gap-3">
             <span className="h-px w-12 bg-nebari-maple/40" />
 
             <span className="text-sm text-nebari-maple">
@@ -168,161 +234,213 @@ export default function AccountPage() {
             </span>
 
             <span className="h-px w-12 bg-nebari-maple/40" />
-
           </div>
-
         </header>
 
         {/* ACCOUNT CARD */}
 
-        <section className="space-y-6 rounded-2xl border border-nebari-border bg-nebari-surface p-8 shadow-sm">
-
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-muted">
+        <section className="mt-10 overflow-hidden rounded-2xl border border-nebari-border bg-nebari-surface shadow-sm">
+          <div className="p-8">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-muted">
               Signed in as
             </p>
 
-            <p className="mt-2 break-words text-nebari-ink">
+            <p className="mt-2 text-sm font-medium text-nebari-ink">
               {email}
             </p>
           </div>
 
-          {membership && (
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-muted">
-                Studio
-              </p>
+          {/* STUDIO ACCESS */}
 
-              <p className="mt-2 capitalize text-nebari-ink">
-                {membership.studio_slug}
-              </p>
-            </div>
-          )}
-
-          {message && (
-            <p className="rounded-xl bg-nebari-paper/50 p-4 text-sm leading-6 text-nebari-muted">
-              {message}
+          <div className="border-t border-nebari-border bg-nebari-paper/30 px-8 py-7">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-muted">
+              Studio Access
             </p>
-          )}
 
-          {membership && (
-            <Link
-              href={`/studios/${membership.studio_slug}`}
-              className="flex w-full items-center justify-center rounded-full bg-nebari-green px-8 py-3 text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
-            >
-              Open My Studio
-            </Link>
-          )}
+            {personalMemberships.length ===
+            0 ? (
+              <>
+                <p className="nebari-serif mt-3 text-2xl text-nebari-ink">
+                  No Studio linked yet.
+                </p>
 
-          <Link
-            href="/update-password"
-            className="flex w-full items-center justify-center rounded-full border border-nebari-border px-8 py-3 text-sm text-nebari-ink transition-all hover:bg-nebari-paper/40 active:scale-[0.98]"
-          >
-            Change Password
-          </Link>
+                <p className="mt-3 text-sm leading-6 text-nebari-muted">
+                  Your login is active, but no
+                  Studio is linked to this
+                  account yet.
+                </p>
+              </>
+            ) : (
+              <div className="mt-4 space-y-4">
+                {personalMemberships.map(
+                  (membership) => {
+                    const studio =
+                      findStudio(
+                        membership.studio_slug,
+                      );
 
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="w-full rounded-full border border-nebari-border px-8 py-3 text-sm text-nebari-muted transition-all hover:bg-nebari-paper/40 hover:text-nebari-ink active:scale-[0.98]"
-          >
-            Sign Out
-          </button>
+                    return (
+                      <div
+                        key={
+                          membership.studio_slug
+                        }
+                        className="rounded-xl border border-nebari-border bg-nebari-surface p-5"
+                      >
+                        <div className="flex items-start gap-4">
+                          <span className="text-2xl">
+                            {studio?.icon ||
+                              "🌿"}
+                          </span>
 
+                          <div className="min-w-0 flex-1">
+                            <p className="nebari-serif text-xl text-nebari-ink">
+                              {studio?.name ??
+                                membership.studio_slug}
+                            </p>
+
+                            <p className="mt-1 text-xs uppercase tracking-[0.14em] text-nebari-muted">
+                              {
+                                membership.role
+                              }
+                            </p>
+
+                            <Link
+                              href={`/studios/${membership.studio_slug}`}
+                              className="mt-4 inline-block text-sm text-nebari-green transition-colors hover:text-nebari-sage"
+                            >
+                              Open Studio →
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  },
+                )}
+              </div>
+            )}
+          </div>
         </section>
 
-        {/* NEBARI ADMINISTRATION */}
+        {/* ADMINISTRATION */}
 
         {isNebariAdmin && (
-          <section className="space-y-6 rounded-2xl border border-nebari-border bg-nebari-surface p-8 shadow-sm">
-
-            <div className="text-center">
-
-              <p className="text-3xl">
-                🍁
-              </p>
-
-              <p className="mt-4 text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-maple">
-                Nebari Administration
-              </p>
-
-              <h2 className="nebari-serif mt-3 text-3xl font-medium text-nebari-ink">
+          <section className="mt-8 overflow-hidden rounded-2xl border border-nebari-border bg-nebari-surface shadow-sm">
+            <div className="p-8">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-maple">
                 Behind the Gallery
+              </p>
+
+              <h2 className="nebari-serif mt-3 text-2xl text-nebari-ink">
+                Nebari Administration
               </h2>
 
               <p className="mt-3 text-sm leading-6 text-nebari-muted">
-                Create Studios, look after people,
-                and curate the shared Gallery.
+                Manage Studios, Gallery
+                submissions and Nebari
+                accounts.
               </p>
 
+              <div className="mt-6 divide-y divide-nebari-border">
+                <Link
+                  href="/admin/studios"
+                  className="flex items-center justify-between py-4 text-sm text-nebari-ink transition-colors hover:text-nebari-green"
+                >
+                  <span>
+                    Manage Studios
+                  </span>
+
+                  <span>→</span>
+                </Link>
+
+                <Link
+                  href="/admin/gallery"
+                  className="flex items-center justify-between py-4 text-sm text-nebari-ink transition-colors hover:text-nebari-green"
+                >
+                  <span>
+                    Gallery Submissions
+                  </span>
+
+                  <span>→</span>
+                </Link>
+
+                <Link
+                  href="/admin/users"
+                  className="flex items-center justify-between py-4 text-sm text-nebari-ink transition-colors hover:text-nebari-green"
+                >
+                  <span>
+                    Manage Users
+                  </span>
+
+                  <span>→</span>
+                </Link>
+              </div>
             </div>
-
-            <Link
-              href="/admin/studios"
-              className="flex w-full items-center justify-between rounded-xl border border-nebari-border px-5 py-4 text-sm text-nebari-ink transition-all hover:border-nebari-sage hover:bg-nebari-paper/40"
-            >
-              <span>
-                Manage Studios
-              </span>
-
-              <span>
-                →
-              </span>
-            </Link>
-
-            <Link
-              href="/admin/gallery"
-              className="flex w-full items-center justify-between rounded-xl border border-nebari-border px-5 py-4 text-sm text-nebari-ink transition-all hover:border-nebari-sage hover:bg-nebari-paper/40"
-            >
-              <span>
-                Gallery Submissions
-              </span>
-
-              <span>
-                →
-              </span>
-            </Link>
-
           </section>
         )}
 
-        {/* FOOTER */}
+        {/* ACCOUNT ACTIONS */}
 
-        <footer className="flex justify-center gap-4 text-xs text-nebari-muted">
+        <section className="mt-8 rounded-2xl border border-nebari-border bg-nebari-surface p-8 shadow-sm">
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-muted">
+            Account
+          </p>
 
-          <Link
-            href="/privacy"
-            className="transition-colors hover:text-nebari-green"
+          <div className="mt-5 space-y-3">
+            <Link
+              href="/update-password"
+              className="flex w-full items-center justify-center rounded-full border border-nebari-green px-7 py-3 text-sm text-nebari-green transition-colors hover:bg-nebari-green hover:text-white"
+            >
+              Change Password
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="w-full rounded-full border border-nebari-border px-7 py-3 text-sm text-nebari-muted transition-colors hover:border-nebari-maple hover:text-nebari-maple"
+            >
+              Sign Out
+            </button>
+          </div>
+        </section>
+
+        {message && (
+          <p
+            role="status"
+            className="mt-6 rounded-xl bg-nebari-paper/40 p-4 text-center text-sm leading-6 text-nebari-muted"
           >
-            Privacy
-          </Link>
+            {message}
+          </p>
+        )}
 
-          <span aria-hidden="true">
-            ·
-          </span>
-
-          <Link
-            href="/terms"
-            className="transition-colors hover:text-nebari-green"
-          >
-            Terms
-          </Link>
-
-          <span aria-hidden="true">
-            ·
-          </span>
-
+        <div className="mt-10 text-center">
           <Link
             href="/"
-            className="transition-colors hover:text-nebari-green"
+            className="text-sm text-nebari-muted transition-colors hover:text-nebari-green"
           >
-            Studio Nebari
+            ← Return to Studio Nebari
           </Link>
-
-        </footer>
-
+        </div>
       </div>
 
+      {/* TIMBER FOOTER */}
+
+      <footer className="mt-12 border-t border-[#2b211c] bg-[#3b2f2a]">
+        <div className="mx-auto max-w-6xl px-6 py-8 text-center">
+          <div className="mx-auto mb-4 flex items-center justify-center gap-3">
+            <span className="h-px w-12 bg-[#6b1d1d]" />
+
+            <span className="text-[#6b1d1d]">
+              ◆
+            </span>
+
+            <span className="h-px w-12 bg-[#6b1d1d]" />
+          </div>
+
+          <p className="nebari-brand text-xs text-[#e8e1d5]">
+            Roots first. Growth second.
+          </p>
+        </div>
+      </footer>
     </main>
   );
 }
