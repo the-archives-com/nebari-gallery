@@ -1,24 +1,20 @@
 import type { MetadataRoute } from "next";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default function manifest():
+  MetadataRoute.Manifest {
   return {
-    name: "Local Legend",
-    short_name: "Local Legend",
+    name: "Studio Nebari",
+    short_name: "Nebari",
     description:
-      "Notice places, preserve moments, and remember what made you stop.",
+      "A quiet place for meaningful work.",
     start_url: "/",
     display: "standalone",
-    background_color: "#fafaf9",
-    theme_color: "#292524",
+    background_color: "#f8f5ee",
+    theme_color: "#f8f5ee",
     icons: [
       {
-        src: "/icon-192.png",
-        sizes: "192x192",
-        type: "image/png",
-      },
-      {
-        src: "/icon-512.png",
-        sizes: "512x512",
+        src: "/icon.png",
+        sizes: "any",
         type: "image/png",
       },
     ],

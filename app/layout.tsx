@@ -1,36 +1,29 @@
 import type { Metadata } from "next";
-import {
-  Cormorant_Garamond,
-  Geist,
-} from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 
 import "./globals.css";
 
-
-const geist = Geist({
-  variable: "--font-nebari-sans",
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-
-const cormorant = Cormorant_Garamond({
-  variable: "--font-nebari-serif",
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
-  weight: [
-    "400",
-    "500",
-    "600",
-  ],
 });
-
 
 export const metadata: Metadata = {
   title: "Studio Nebari",
+  applicationName: "Studio Nebari",
   description:
-    "A quiet place for creative work to grow.",
+    "A quiet place for meaningful work.",
+  appleWebApp: {
+    capable: true,
+    title: "Studio Nebari",
+    statusBarStyle: "default",
+  },
 };
-
-
 
 export default function RootLayout({
   children,
@@ -40,9 +33,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geist.variable} ${cormorant.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">
+      <body className="min-h-full">
         {children}
       </body>
     </html>
