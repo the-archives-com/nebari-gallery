@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { supabase } from "../../../lib/supabase";
 
-type PendingArtwork = {
+type Artwork = {
   id: number;
   created_at: string;
   studio_slug: string;
@@ -17,67 +20,57 @@ type PendingArtwork = {
   gallery_status: string | null;
 };
 
-type Studio = {
-  slug: string;
-  name: string;
-  owner: string;
+type StudioNameMap = {
+  [slug: string]: string;
 };
 
-type StudioMap = {
-  [slug: string]: Studio;
-};
+type GalleryAction =
+  | "approve"
+  | "decline"
+  | "feature"
+  | "remove";
 
-export default function GallerySubmissionsPage() {
-  const router = useRouter();
+export default function GalleryCurationPage() {
+  const [
+    artworks,
+    setArtworks,
+  ] = useState<Artwork[]>([]);
 
-  const [submissions, setSubmissions] =
-    useState<PendingArtwork[]>([]);
+  const [
+    studioNames,
+    setStudioNames,
+  ] = useState<StudioNameMap>({});
 
-  const [studios, setStudios] =
-    useState<StudioMap>({});
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
 
-  const [processingId, setProcessingId] =
-    useState<number | null>(null);
+  const [
+    message,
+    setMessage,
+  ] = useState("");
 
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [
+    savingId,
+    setSavingId,
+  ] = useState<number | null>(
+    null,
+  );
+
+  /*
+   * LOAD ALL STUDIO WORK
+   */
 
   useEffect(() => {
-    async function loadSubmissions() {
+    async function loadCuration() {
       setLoading(true);
       setErrorMessage("");
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        router.replace("/login");
-        return;
-      }
-
-      const {
-        data: membership,
-        error: membershipError,
-      } = await supabase
-        .from("studio_members")
-        .select("studio_slug, role")
-        .eq("user_id", user.id)
-        .eq("studio_slug", "nebari")
-        .eq("role", "owner")
-        .maybeSingle();
-
-      if (
-        membershipError ||
-        !membership
-      ) {
-        router.replace("/account");
-        return;
-      }
 
       const [
         artworkResult,
@@ -88,150 +81,441 @@ export default function GallerySubmissionsPage() {
           .select(
             "id, created_at, studio_slug, title, description, image_url, category, gallery_status",
           )
-          .eq(
-            "gallery_status",
-            "pending",
-          )
-          .order("created_at", {
-            ascending: true,
-          }),
+          .order(
+            "created_at",
+            {
+              ascending: false,
+            },
+          ),
 
         supabase
           .from("studios")
           .select(
-            "slug, name, owner",
+            "slug, name",
+          )
+          .order(
+            "name",
+            {
+              ascending: true,
+            },
           ),
       ]);
 
-      if (artworkResult.error) {
+      if (
+        artworkResult.error
+      ) {
         console.error(
-          "Could not load Gallery submissions:",
+          "Could not load artwork for curation:",
           artworkResult.error,
         );
 
         setErrorMessage(
-          "Gallery submissions could not be loaded.",
+          "Studio artwork could not be loaded.",
         );
 
         setLoading(false);
         return;
       }
 
-      if (studioResult.error) {
-        console.error(
-          "Could not load Studios:",
-          studioResult.error,
-        );
-      }
-
-      const studioMap: StudioMap = {};
+      const names:
+        StudioNameMap = {};
 
       for (
         const studio of
           studioResult.data ?? []
       ) {
-        studioMap[studio.slug] =
-          studio;
+        names[
+          studio.slug
+        ] = studio.name;
       }
 
-      setStudios(studioMap);
+      setStudioNames(
+        names,
+      );
 
-      setSubmissions(
-        artworkResult.data ?? [],
+      setArtworks(
+        artworkResult.data ??
+          [],
       );
 
       setLoading(false);
     }
 
-    loadSubmissions();
-  }, [router]);
+    loadCuration();
+  }, []);
 
-  async function handleDecision(
+  /*
+   * GROUP WORK BY GALLERY STATUS
+   */
+
+  const awaitingReview =
+    useMemo(
+      () =>
+        artworks.filter(
+          (artwork) =>
+            artwork.gallery_status ===
+            "pending",
+        ),
+      [artworks],
+    );
+
+  const studioWork =
+    useMemo(
+      () =>
+        artworks.filter(
+          (artwork) =>
+            artwork.gallery_status ===
+              "not_featured" ||
+            artwork.gallery_status ===
+              null,
+        ),
+      [artworks],
+    );
+
+  const featuredWork =
+    useMemo(
+      () =>
+        artworks.filter(
+          (artwork) =>
+            artwork.gallery_status ===
+            "featured",
+        ),
+      [artworks],
+    );
+
+  const declinedWork =
+    useMemo(
+      () =>
+        artworks.filter(
+          (artwork) =>
+            artwork.gallery_status ===
+            "declined",
+        ),
+      [artworks],
+    );
+
+  /*
+   * CURATION ACTION
+   */
+
+  async function changeStatus(
     artworkId: number,
-    action:
-      | "approve"
-      | "decline",
+    action: GalleryAction,
   ) {
-    setProcessingId(artworkId);
+    setSavingId(
+      artworkId,
+    );
+
+    setMessage("");
     setErrorMessage("");
 
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: sessionData,
+    } =
+      await supabase.auth.getSession();
 
-    if (!session?.access_token) {
+    const accessToken =
+      sessionData.session
+        ?.access_token;
+
+    if (!accessToken) {
       setErrorMessage(
-        "Your administrator session could not be verified.",
+        "Your session has ended. Please sign in again.",
       );
 
-      setProcessingId(null);
+      setSavingId(null);
       return;
     }
 
     try {
-      const response = await fetch(
-        "/api/admin/gallery-submission",
-        {
-          method: "POST",
+      const response =
+        await fetch(
+          "/api/admin/gallery-submission",
+          {
+            method:
+              "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
+            headers: {
+              "Content-Type":
+                "application/json",
 
-            Authorization:
-              `Bearer ${session.access_token}`,
+              Authorization:
+                `Bearer ${accessToken}`,
+            },
+
+            body:
+              JSON.stringify({
+                artworkId,
+                action,
+              }),
           },
-
-          body: JSON.stringify({
-            artworkId,
-            action,
-          }),
-        },
-      );
+        );
 
       const result =
         await response.json();
 
       if (!response.ok) {
-        setErrorMessage(
+        throw new Error(
           result.error ??
-            "The Gallery submission could not be updated.",
+            "The Gallery could not be updated.",
         );
-
-        setProcessingId(null);
-        return;
       }
 
-      setSubmissions(
+      setArtworks(
         (current) =>
-          current.filter(
-            (submission) =>
-              submission.id !==
-              artworkId,
+          current.map(
+            (artwork) =>
+              artwork.id ===
+              artworkId
+                ? {
+                    ...artwork,
+
+                    gallery_status:
+                      result.galleryStatus,
+                  }
+                : artwork,
           ),
       );
 
-      setProcessingId(null);
+      if (
+        result.galleryStatus ===
+        "featured"
+      ) {
+        setMessage(
+          "Added to the Gallery.",
+        );
+      } else if (
+        result.galleryStatus ===
+        "not_featured"
+      ) {
+        setMessage(
+          "Removed from the Gallery.",
+        );
+      } else if (
+        result.galleryStatus ===
+        "declined"
+      ) {
+        setMessage(
+          "Gallery suggestion declined.",
+        );
+      }
     } catch (error) {
       console.error(
-        "Could not review Gallery submission:",
+        "Could not change Gallery status:",
         error,
       );
 
       setErrorMessage(
-        "Something went wrong while reviewing this submission.",
+        error instanceof Error
+          ? error.message
+          : "The Gallery could not be updated.",
       );
-
-      setProcessingId(null);
+    } finally {
+      setSavingId(
+        null,
+      );
     }
+  }
+
+  /*
+   * REUSABLE ARTWORK CARD
+   */
+
+  function artworkCard(
+    artwork: Artwork,
+    mode:
+      | "pending"
+      | "discover"
+      | "featured"
+      | "declined",
+  ) {
+    const studioName =
+      studioNames[
+        artwork.studio_slug
+      ] ??
+      artwork.studio_slug;
+
+    const busy =
+      savingId ===
+      artwork.id;
+
+    return (
+      <article
+        key={
+          artwork.id
+        }
+        className="overflow-hidden rounded-2xl border border-nebari-border bg-nebari-surface shadow-sm"
+      >
+
+        <div className="aspect-[4/3] overflow-hidden bg-nebari-paper/40">
+
+          <img
+            src={
+              artwork.image_url
+            }
+            alt={
+              artwork.title
+            }
+            className="h-full w-full object-cover"
+          />
+
+        </div>
+
+        <div className="p-5">
+
+          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-nebari-green">
+            {studioName}
+          </p>
+
+          <h3 className="nebari-serif mt-2 text-2xl text-nebari-ink">
+            {artwork.title}
+          </h3>
+
+          {artwork.category && (
+            <p className="mt-2 text-xs uppercase tracking-[0.14em] text-nebari-muted">
+              {
+                artwork.category
+              }
+            </p>
+          )}
+
+          {artwork.description && (
+            <p className="mt-3 line-clamp-3 text-sm leading-6 text-nebari-muted">
+              {
+                artwork.description
+              }
+            </p>
+          )}
+
+          <div className="mt-5 border-t border-nebari-border pt-5">
+
+            <Link
+              href={`/studios/${artwork.studio_slug}/artwork/${artwork.id}`}
+              target="_blank"
+              className="text-sm text-nebari-muted transition-colors hover:text-nebari-green"
+            >
+              View artwork →
+            </Link>
+
+            {mode ===
+              "pending" && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+
+                <button
+                  type="button"
+                  disabled={
+                    busy
+                  }
+                  onClick={() =>
+                    changeStatus(
+                      artwork.id,
+                      "approve",
+                    )
+                  }
+                  className="rounded-full bg-nebari-green px-5 py-3 text-sm text-white transition-all hover:opacity-90 disabled:opacity-50"
+                >
+                  {busy
+                    ? "Updating..."
+                    : "Add to Gallery"}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    busy
+                  }
+                  onClick={() =>
+                    changeStatus(
+                      artwork.id,
+                      "decline",
+                    )
+                  }
+                  className="rounded-full border border-nebari-border px-5 py-3 text-sm text-nebari-muted transition-colors hover:border-nebari-maple hover:text-nebari-maple disabled:opacity-50"
+                >
+                  Decline
+                </button>
+
+              </div>
+            )}
+
+            {mode ===
+              "discover" && (
+              <button
+                type="button"
+                disabled={
+                  busy
+                }
+                onClick={() =>
+                  changeStatus(
+                    artwork.id,
+                    "feature",
+                  )
+                }
+                className="mt-4 w-full rounded-full bg-nebari-green px-5 py-3 text-sm text-white transition-all hover:opacity-90 disabled:opacity-50"
+              >
+                {busy
+                  ? "Adding..."
+                  : "Add to Gallery"}
+              </button>
+            )}
+
+            {mode ===
+              "featured" && (
+              <button
+                type="button"
+                disabled={
+                  busy
+                }
+                onClick={() =>
+                  changeStatus(
+                    artwork.id,
+                    "remove",
+                  )
+                }
+                className="mt-4 w-full rounded-full border border-nebari-border px-5 py-3 text-sm text-nebari-muted transition-colors hover:border-nebari-maple hover:text-nebari-maple disabled:opacity-50"
+              >
+                {busy
+                  ? "Removing..."
+                  : "Remove from Gallery"}
+              </button>
+            )}
+
+            {mode ===
+              "declined" && (
+              <button
+                type="button"
+                disabled={
+                  busy
+                }
+                onClick={() =>
+                  changeStatus(
+                    artwork.id,
+                    "feature",
+                  )
+                }
+                className="mt-4 w-full rounded-full border border-nebari-green px-5 py-3 text-sm text-nebari-green transition-colors hover:bg-nebari-green hover:text-white disabled:opacity-50"
+              >
+                {busy
+                  ? "Adding..."
+                  : "Add to Gallery Anyway"}
+              </button>
+            )}
+
+          </div>
+
+        </div>
+
+      </article>
+    );
   }
 
   return (
     <main className="min-h-screen bg-background text-foreground">
 
-      {/* ADMIN BRAND BAR */}
+      {/* TOP BAR */}
 
       <div className="border-b border-nebari-border bg-nebari-surface/70">
+
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
 
           <Link
@@ -241,46 +525,32 @@ export default function GallerySubmissionsPage() {
             Studio Nebari
           </Link>
 
-          <nav className="flex items-center gap-7 text-xs font-medium uppercase tracking-[0.14em]">
-
-            <Link
-              href="/admin/studios"
-              className="text-nebari-muted transition-colors hover:text-nebari-green"
-            >
-              Manage Studios
-            </Link>
-
-            <Link
-              href="/account"
-              className="text-nebari-muted transition-colors hover:text-nebari-green"
-            >
-              My Account
-            </Link>
-
-          </nav>
+          <Link
+            href="/account"
+            className="text-xs font-medium uppercase tracking-[0.14em] text-nebari-muted transition-colors hover:text-nebari-green"
+          >
+            Administration
+          </Link>
 
         </div>
+
       </div>
 
-      <div className="mx-auto max-w-5xl px-6 py-16">
+      <div className="mx-auto max-w-6xl px-6 py-16">
 
         {/* HEADER */}
 
-        <header className="text-center">
+        <header className="mx-auto max-w-2xl text-center">
 
-          <p className="text-3xl">
-            🍁
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-maple">
+            Behind the Gallery
           </p>
 
-          <p className="mt-4 text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-maple">
-            Nebari Administration
-          </p>
-
-          <h1 className="nebari-serif mt-4 text-5xl font-medium tracking-tight text-nebari-ink">
-            Gallery Submissions
+          <h1 className="nebari-serif mt-5 text-5xl font-medium tracking-tight text-nebari-ink sm:text-6xl">
+            Gallery Curation
           </h1>
 
-          <div className="mx-auto mt-5 flex items-center justify-center gap-3">
+          <div className="mx-auto mt-6 flex items-center justify-center gap-3">
 
             <span className="h-px w-12 bg-nebari-maple/40" />
 
@@ -292,288 +562,242 @@ export default function GallerySubmissionsPage() {
 
           </div>
 
-          <p className="mx-auto mt-6 max-w-xl text-sm leading-7 text-nebari-muted">
-            Review work submitted from personal
-            Studios and decide what joins the shared Gallery.
+          <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-nebari-muted">
+            Select work directly from personal Studios
+            for inclusion in the shared Gallery.
           </p>
-
-          {!loading && (
-            <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-nebari-green">
-              {submissions.length === 1
-                ? "1 piece awaiting review"
-                : `${submissions.length} pieces awaiting review`}
-            </p>
-          )}
 
         </header>
 
-        {/* LOADING */}
+        {/* STATUS MESSAGE */}
 
-        {loading && (
-          <p className="mt-16 text-center italic text-nebari-muted">
-            Preparing the curator&apos;s desk...
+        {message && (
+          <p className="mx-auto mt-8 max-w-xl rounded-xl bg-nebari-paper/50 p-4 text-center text-sm text-nebari-green">
+            {message}
           </p>
         )}
 
-        {/* ERROR */}
-
         {errorMessage && (
-          <p
-            role="alert"
-            className="mx-auto mt-10 max-w-2xl rounded-xl border border-nebari-maple/20 bg-nebari-surface p-4 text-center text-sm text-nebari-maple"
-          >
+          <p className="mx-auto mt-8 max-w-xl rounded-xl border border-nebari-maple/30 bg-nebari-surface p-4 text-center text-sm text-nebari-maple">
             {errorMessage}
           </p>
         )}
 
-        {/* EMPTY DESK */}
+        {loading ? (
+          <p className="mt-12 text-center italic text-nebari-muted">
+            Walking through the Studios...
+          </p>
+        ) : (
+          <>
 
-        {!loading &&
-          submissions.length === 0 && (
-            <div className="mx-auto mt-16 max-w-xl rounded-2xl border border-dashed border-nebari-border bg-nebari-surface p-10 text-center shadow-sm">
+            {/* AWAITING REVIEW */}
 
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-green">
-                Gallery Review
-              </p>
+            <section className="mt-14">
 
-              <h2 className="nebari-serif mt-3 text-3xl font-medium text-nebari-ink">
-                The curator&apos;s desk is clear.
-              </h2>
+              <div className="border-b border-nebari-border pb-5">
 
-              <p className="mt-4 text-sm leading-6 text-nebari-muted">
-                New Gallery submissions will appear here
-                when artists send work for consideration.
-              </p>
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-nebari-maple">
+                  Artist Suggestions
+                </p>
 
-            </div>
-          )}
+                <div className="mt-2 flex items-end justify-between gap-4">
 
-        {/* SUBMISSIONS */}
+                  <h2 className="nebari-serif text-3xl text-nebari-ink">
+                    Awaiting Review
+                  </h2>
 
-        {!loading &&
-          submissions.length > 0 && (
-            <section className="mt-14 space-y-10">
+                  <p className="text-sm text-nebari-muted">
+                    {
+                      awaitingReview.length
+                    }
+                  </p>
 
-              {submissions.map(
-                (submission) => {
-                  const studio =
-                    studios[
-                      submission.studio_slug
-                    ];
+                </div>
 
-                  const busy =
-                    processingId ===
-                    submission.id;
+              </div>
 
-                  return (
-                    <article
-                      key={submission.id}
-                      className="overflow-hidden rounded-2xl border border-nebari-border bg-nebari-surface shadow-sm"
-                    >
+              {awaitingReview.length ===
+              0 ? (
+                <p className="py-8 text-sm italic text-nebari-muted">
+                  Nothing is waiting for review.
+                </p>
+              ) : (
+                <div className="mt-7 grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
 
-                      <div className="grid md:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+                  {awaitingReview.map(
+                    (artwork) =>
+                      artworkCard(
+                        artwork,
+                        "pending",
+                      ),
+                  )}
 
-                        {/* ARTWORK */}
-
-                        <div className="bg-nebari-paper/35 p-4 sm:p-5">
-
-                          <img
-                            src={
-                              submission.image_url
-                            }
-                            alt={
-                              submission.title
-                            }
-                            className="h-full max-h-[560px] w-full rounded-xl object-contain"
-                          />
-
-                        </div>
-
-                        {/* CURATOR NOTES */}
-
-                        <div className="flex flex-col justify-between p-7 sm:p-8">
-
-                          <div>
-
-                            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-green">
-                              Submitted Work
-                            </p>
-
-                            <h2 className="nebari-serif mt-3 text-3xl font-medium text-nebari-ink">
-                              {
-                                submission.title
-                              }
-                            </h2>
-
-                            {submission.category && (
-                              <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.16em] text-nebari-maple">
-                                {
-                                  submission.category
-                                }
-                              </p>
-                            )}
-
-                            <div className="mt-6 border-t border-nebari-border pt-5">
-
-                              <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-nebari-muted">
-                                Artist
-                              </p>
-
-                              <p className="mt-2 text-sm text-nebari-ink">
-                                {studio
-                                  ? studio.owner
-                                  : submission.studio_slug}
-                              </p>
-
-                              <p className="mt-1 text-xs text-nebari-muted">
-                                {studio
-                                  ? studio.name
-                                  : submission.studio_slug}
-                              </p>
-
-                            </div>
-
-                            {submission.description && (
-                              <div className="mt-6 border-t border-nebari-border pt-5">
-
-                                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-nebari-muted">
-                                  About the Piece
-                                </p>
-
-                                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-nebari-muted">
-                                  {
-                                    submission.description
-                                  }
-                                </p>
-
-                              </div>
-                            )}
-
-                            <Link
-                              href={`/studios/${submission.studio_slug}/artwork/${submission.id}`}
-                              target="_blank"
-                              className="mt-6 inline-block text-sm text-nebari-green transition-colors hover:text-nebari-maple"
-                            >
-                              View full artwork →
-                            </Link>
-
-                          </div>
-
-                          {/* DECISION */}
-
-                          <div className="mt-9 border-t border-nebari-border pt-6">
-
-                            <p className="mb-4 text-[10px] font-medium uppercase tracking-[0.2em] text-nebari-muted">
-                              Curator&apos;s Decision
-                            </p>
-
-                            <div className="grid gap-3">
-
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() =>
-                                  handleDecision(
-                                    submission.id,
-                                    "approve",
-                                  )
-                                }
-                                className="rounded-full bg-nebari-green px-6 py-3 text-sm text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-                              >
-                                {busy
-                                  ? "Updating..."
-                                  : "Add to Gallery"}
-                              </button>
-
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() =>
-                                  handleDecision(
-                                    submission.id,
-                                    "decline",
-                                  )
-                                }
-                                className="rounded-full border border-nebari-border px-6 py-3 text-sm text-nebari-muted transition-all hover:border-nebari-maple/40 hover:bg-nebari-paper/35 hover:text-nebari-ink active:scale-[0.98] disabled:opacity-50"
-                              >
-                                Not this time
-                              </button>
-
-                            </div>
-
-                          </div>
-
-                        </div>
-
-                      </div>
-
-                    </article>
-                  );
-                },
+                </div>
               )}
 
             </section>
-          )}
 
-        {/* ADMIN SHORTCUTS */}
+            {/* DISCOVER IN STUDIOS */}
 
-        <div className="mt-14 grid gap-3 sm:grid-cols-2">
+            <section className="mt-16">
 
-          <Link
-            href="/admin/studios"
-            className="flex items-center justify-between rounded-xl border border-nebari-border bg-nebari-surface px-5 py-4 text-sm text-nebari-ink transition-all hover:border-nebari-sage hover:bg-nebari-paper/30"
-          >
-            <span>
-              Manage Studios
-            </span>
+              <div className="border-b border-nebari-border pb-5">
 
-            <span>
-              →
-            </span>
-          </Link>
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-nebari-green">
+                  Curator&apos;s View
+                </p>
+
+                <div className="mt-2 flex items-end justify-between gap-4">
+
+                  <div>
+
+                    <h2 className="nebari-serif text-3xl text-nebari-ink">
+                      Discover in Studios
+                    </h2>
+
+                    <p className="mt-2 text-sm leading-6 text-nebari-muted">
+                      Work available for selection,
+                      whether or not the artist suggested it.
+                    </p>
+
+                  </div>
+
+                  <p className="text-sm text-nebari-muted">
+                    {
+                      studioWork.length
+                    }
+                  </p>
+
+                </div>
+
+              </div>
+
+              {studioWork.length ===
+              0 ? (
+                <p className="py-8 text-sm italic text-nebari-muted">
+                  No unselected Studio work at the moment.
+                </p>
+              ) : (
+                <div className="mt-7 grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
+
+                  {studioWork.map(
+                    (artwork) =>
+                      artworkCard(
+                        artwork,
+                        "discover",
+                      ),
+                  )}
+
+                </div>
+              )}
+
+            </section>
+
+            {/* CURRENTLY IN GALLERY */}
+
+            <section className="mt-16">
+
+              <div className="border-b border-nebari-border pb-5">
+
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-nebari-green">
+                  Shared Exhibition
+                </p>
+
+                <div className="mt-2 flex items-end justify-between gap-4">
+
+                  <h2 className="nebari-serif text-3xl text-nebari-ink">
+                    Currently in Gallery
+                  </h2>
+
+                  <p className="text-sm text-nebari-muted">
+                    {
+                      featuredWork.length
+                    }
+                  </p>
+
+                </div>
+
+              </div>
+
+              {featuredWork.length ===
+              0 ? (
+                <p className="py-8 text-sm italic text-nebari-muted">
+                  The Gallery is waiting for its first selection.
+                </p>
+              ) : (
+                <div className="mt-7 grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
+
+                  {featuredWork.map(
+                    (artwork) =>
+                      artworkCard(
+                        artwork,
+                        "featured",
+                      ),
+                  )}
+
+                </div>
+              )}
+
+            </section>
+
+            {/* DECLINED SUGGESTIONS */}
+
+            {declinedWork.length >
+              0 && (
+              <section className="mt-16">
+
+                <div className="border-b border-nebari-border pb-5">
+
+                  <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-nebari-muted">
+                    Archive
+                  </p>
+
+                  <div className="mt-2 flex items-end justify-between gap-4">
+
+                    <h2 className="nebari-serif text-3xl text-nebari-ink">
+                      Declined Suggestions
+                    </h2>
+
+                    <p className="text-sm text-nebari-muted">
+                      {
+                        declinedWork.length
+                      }
+                    </p>
+
+                  </div>
+
+                </div>
+
+                <div className="mt-7 grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
+
+                  {declinedWork.map(
+                    (artwork) =>
+                      artworkCard(
+                        artwork,
+                        "declined",
+                      ),
+                  )}
+
+                </div>
+
+              </section>
+            )}
+
+          </>
+        )}
+
+        <div className="mt-16 border-t border-nebari-border pt-8 text-center">
 
           <Link
             href="/account"
-            className="flex items-center justify-between rounded-xl border border-nebari-border bg-nebari-surface px-5 py-4 text-sm text-nebari-ink transition-all hover:border-nebari-sage hover:bg-nebari-paper/30"
+            className="text-sm text-nebari-muted transition-colors hover:text-nebari-green"
           >
-            <span>
-              My Account
-            </span>
-
-            <span>
-              →
-            </span>
+            ← Return to Administration
           </Link>
 
         </div>
 
       </div>
-
-      {/* DARK TIMBER FOOTER */}
-
-      <footer className="mt-12 border-t border-[#2b211c] bg-[#3b2f2a]">
-
-        <div className="mx-auto max-w-6xl px-6 py-10 text-center">
-
-          <div className="mx-auto mb-4 flex items-center justify-center gap-3">
-
-            <span className="h-px w-12 bg-[#6b1d1d]" />
-
-            <span className="text-[#6b1d1d]">
-              ◆
-            </span>
-
-            <span className="h-px w-12 bg-[#6b1d1d]" />
-
-          </div>
-
-          <p className="nebari-brand text-xs text-[#e8e1d5]">
-            Roots first. Growth second.
-          </p>
-
-        </div>
-
-      </footer>
 
     </main>
   );

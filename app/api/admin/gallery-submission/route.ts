@@ -2,13 +2,20 @@ import { NextResponse } from "next/server";
 
 import { supabaseAdmin } from "../../../../lib/supabase-admin";
 
+type GalleryAction =
+  | "approve"
+  | "decline"
+  | "feature"
+  | "remove";
+
 export async function POST(
   request: Request,
 ) {
   try {
     /*
-     * 1. Verify signed-in user.
+     * 1. VERIFY SIGNED-IN USER
      */
+
     const authHeader =
       request.headers.get(
         "authorization",
@@ -59,17 +66,29 @@ export async function POST(
     }
 
     /*
-     * 2. Verify Nebari administrator.
+     * 2. VERIFY NEBARI ADMINISTRATOR
      */
+
     const {
       data: membership,
       error: membershipError,
     } = await supabaseAdmin
       .from("studio_members")
-      .select("studio_slug, role")
-      .eq("user_id", user.id)
-      .eq("studio_slug", "nebari")
-      .eq("role", "owner")
+      .select(
+        "studio_slug, role",
+      )
+      .eq(
+        "user_id",
+        user.id,
+      )
+      .eq(
+        "studio_slug",
+        "nebari",
+      )
+      .eq(
+        "role",
+        "owner",
+      )
       .maybeSingle();
 
     if (
@@ -93,8 +112,9 @@ export async function POST(
     }
 
     /*
-     * 3. Read decision.
+     * 3. READ CURATION ACTION
      */
+
     let body: {
       artworkId?: unknown;
       action?: unknown;
@@ -123,10 +143,21 @@ export async function POST(
             body.artworkId,
           );
 
+    const validActions:
+      GalleryAction[] = [
+        "approve",
+        "decline",
+        "feature",
+        "remove",
+      ];
+
     const action =
-      body.action === "approve" ||
-      body.action === "decline"
-        ? body.action
+      typeof body.action ===
+        "string" &&
+      validActions.includes(
+        body.action as GalleryAction,
+      )
+        ? (body.action as GalleryAction)
         : null;
 
     if (
@@ -149,7 +180,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "A valid Gallery decision is required.",
+            "A valid Gallery action is required.",
         },
         {
           status: 400,
@@ -158,12 +189,75 @@ export async function POST(
     }
 
     /*
-     * 4. Only pending work can be reviewed.
+     * 4. DETERMINE ALLOWED STATUS CHANGE
+     *
+     * approve:
+     *   pending → featured
+     *
+     * decline:
+     *   pending → declined
+     *
+     * feature:
+     *   ordinary Studio work → featured
+     *
+     * remove:
+     *   featured → not_featured
      */
-    const newStatus =
-      action === "approve"
-        ? "featured"
-        : "declined";
+
+    let newStatus:
+      | "featured"
+      | "declined"
+      | "not_featured";
+
+    let allowedCurrentStatuses:
+      string[];
+
+    switch (action) {
+      case "approve":
+        newStatus =
+          "featured";
+
+        allowedCurrentStatuses = [
+          "pending",
+        ];
+
+        break;
+
+      case "decline":
+        newStatus =
+          "declined";
+
+        allowedCurrentStatuses = [
+          "pending",
+        ];
+
+        break;
+
+      case "feature":
+        newStatus =
+          "featured";
+
+        allowedCurrentStatuses = [
+          "not_featured",
+          "declined",
+        ];
+
+        break;
+
+      case "remove":
+        newStatus =
+          "not_featured";
+
+        allowedCurrentStatuses = [
+          "featured",
+        ];
+
+        break;
+    }
+
+    /*
+     * 5. UPDATE ARTWORK
+     */
 
     const {
       data: artwork,
@@ -174,10 +268,13 @@ export async function POST(
         gallery_status:
           newStatus,
       })
-      .eq("id", artworkId)
       .eq(
+        "id",
+        artworkId,
+      )
+      .in(
         "gallery_status",
-        "pending",
+        allowedCurrentStatuses,
       )
       .select(
         "id, studio_slug, gallery_status",
@@ -186,14 +283,14 @@ export async function POST(
 
     if (updateError) {
       console.error(
-        "Could not review Gallery submission:",
+        "Could not update Gallery status:",
         updateError,
       );
 
       return NextResponse.json(
         {
           error:
-            `The Gallery submission could not be updated: ${updateError.message}`,
+            `The Gallery selection could not be updated: ${updateError.message}`,
         },
         {
           status: 500,
@@ -205,7 +302,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "This submission is no longer awaiting review.",
+            "This artwork has already changed status. Refresh the page and try again.",
         },
         {
           status: 409,
@@ -215,8 +312,10 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
+
       artworkId:
         artwork.id,
+
       galleryStatus:
         artwork.gallery_status,
     });
@@ -229,7 +328,7 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          "Something unexpected went wrong while reviewing the Gallery submission.",
+          "Something unexpected went wrong while updating the Gallery.",
       },
       {
         status: 500,

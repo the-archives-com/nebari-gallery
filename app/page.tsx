@@ -19,14 +19,13 @@ export default function HomePage() {
             Studio Nebari
           </Link>
 
-          <nav className="flex items-center gap-7 text-xs font-medium uppercase tracking-[0.14em]">
+          <nav className="flex items-center gap-6 text-xs font-medium uppercase tracking-[0.14em]">
 
             <Link
-              href="/"
-              aria-current="page"
-              className="border-b-2 border-nebari-green pb-2 text-nebari-green"
+              href="/login"
+              className="rounded-full bg-nebari-green px-4 py-2 text-white transition-all hover:opacity-90"
             >
-              Home
+              Login
             </Link>
 
             <Link
@@ -83,7 +82,34 @@ export default function HomePage() {
 
         {/* PRIMARY DOORS */}
 
-        <div className="mx-auto mt-14 grid max-w-3xl gap-5 sm:grid-cols-2">
+        <div className="mx-auto mt-14 grid max-w-5xl gap-5 md:grid-cols-3">
+
+          {/* STUDIO ACCESS */}
+
+          <Link
+            href="/login"
+            className="group rounded-2xl border border-nebari-green bg-nebari-green p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+          >
+
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/70">
+              For Artists
+            </p>
+
+            <h2 className="nebari-serif mt-3 text-3xl font-medium text-white">
+              Studio Access
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-white/80">
+              Sign in to your account and enter your Studio.
+            </p>
+
+            <p className="mt-6 text-sm text-white transition-all group-hover:translate-x-1">
+              Open Studio Access →
+            </p>
+
+          </Link>
+
+          {/* GALLERY */}
 
           <Link
             href="/gallery"
@@ -107,6 +133,8 @@ export default function HomePage() {
             </p>
 
           </Link>
+
+          {/* STUDIOS */}
 
           <Link
             href="/studios"
@@ -133,11 +161,66 @@ export default function HomePage() {
 
         </div>
 
-        {/* MAKERS MARK */}
+        {/* WHY NEBARI */}
 
-        <section className="mx-auto mt-20 w-full max-w-2xl">
+        <section className="mx-auto mt-20 max-w-3xl">
+
+          <div className="rounded-3xl border border-nebari-border bg-nebari-surface px-8 py-10 text-center shadow-sm sm:px-12">
+
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-nebari-maple">
+              Why Nebari?
+            </p>
+
+            <h2 className="nebari-serif mt-4 text-3xl font-medium text-nebari-ink sm:text-4xl">
+              Growth starts at the roots.
+            </h2>
+
+            <div className="mx-auto mt-6 flex items-center justify-center gap-3">
+
+              <span className="h-px w-10 bg-nebari-maple/40" />
+
+              <span className="text-sm text-nebari-maple">
+                ◆
+              </span>
+
+              <span className="h-px w-10 bg-nebari-maple/40" />
+
+            </div>
+
+            <div className="mx-auto mt-7 max-w-2xl space-y-5 text-sm leading-7 text-nebari-muted sm:text-base sm:leading-8">
+
+              <p>
+                Nebari is the exposed root at the base of a bonsai tree —
+                the foundation from which the tree grows.
+              </p>
+
+              <p>
+                Art can be much the same. During the process,
+                it can be difficult to see what the work will eventually
+                become. What looks unfinished today may simply need time,
+                patience and continued attention.
+              </p>
+
+              <p className="nebari-serif text-xl text-nebari-ink">
+                Roots first. Growth second.
+              </p>
+
+              <p className="italic text-nebari-maple">
+                Mostly, it&apos;s a stick in a pot.
+              </p>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* MAKER'S MARK */}
+
+        <section className="mx-auto mt-14 w-full max-w-2xl">
 
           <div className="overflow-hidden rounded-2xl border border-nebari-border bg-nebari-surface shadow-lg">
+
             <Image
               src="/nebari-makers-mark.png"
               alt="Studio Nebari — Roots First. Growth Second."
@@ -146,6 +229,7 @@ export default function HomePage() {
               priority
               className="h-auto w-full"
             />
+
           </div>
 
         </section>
