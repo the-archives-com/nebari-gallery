@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 
 export default function OwnerLink() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     async function checkSession() {
@@ -15,6 +16,7 @@ export default function OwnerLink() {
       } = await supabase.auth.getSession();
 
       setLoggedIn(Boolean(session));
+      setReady(true);
     }
 
     checkSession();
@@ -24,6 +26,7 @@ export default function OwnerLink() {
     } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setLoggedIn(Boolean(session));
+        setReady(true);
       },
     );
 
@@ -32,12 +35,16 @@ export default function OwnerLink() {
     };
   }, []);
 
+  if (!ready) {
+    return null;
+  }
+
   return (
     <Link
       href={loggedIn ? "/account" : "/login"}
-      className="transition-colors hover:text-stone-700"
+      className="rounded-full bg-nebari-green px-4 py-2 text-white transition-all hover:opacity-90"
     >
-      {loggedIn ? "My Account" : "Studio Login"}
+      {loggedIn ? "Account" : "Login"}
     </Link>
   );
 }
