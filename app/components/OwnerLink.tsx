@@ -5,7 +5,13 @@ import { useEffect, useState } from "react";
 
 import { supabase } from "../../lib/supabase";
 
-export default function OwnerLink() {
+type OwnerLinkProps = {
+  variant?: "header" | "footer";
+};
+
+export default function OwnerLink({
+  variant = "footer",
+}: OwnerLinkProps) {
   const [loggedIn, setLoggedIn] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -39,12 +45,24 @@ export default function OwnerLink() {
     return null;
   }
 
+  const isHeader = variant === "header";
+
   return (
     <Link
       href={loggedIn ? "/account" : "/login"}
-      className="rounded-full bg-nebari-green px-4 py-2 text-white transition-all hover:opacity-90"
+      className={
+        isHeader
+          ? "rounded-full bg-nebari-green px-4 py-2 text-white transition-all hover:opacity-90"
+          : "transition-colors hover:text-stone-700"
+      }
     >
-      {loggedIn ? "Account" : "Login"}
+      {isHeader
+        ? loggedIn
+          ? "Account"
+          : "Login"
+        : loggedIn
+          ? "My Account"
+          : "Studio Login"}
     </Link>
   );
 }

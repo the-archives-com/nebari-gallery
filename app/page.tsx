@@ -21,28 +21,23 @@ export default function HomePage() {
 
           <nav className="flex items-center gap-6 text-xs font-medium uppercase tracking-[0.14em]">
 
-            <Link
-              href="/login"
-              className="rounded-full bg-nebari-green px-4 py-2 text-white transition-all hover:opacity-90"
-            >
-              Login
-            </Link>
+  <OwnerLink variant="header" />
 
-            <Link
-              href="/gallery"
-              className="text-nebari-muted transition-colors hover:text-nebari-green"
-            >
-              Gallery
-            </Link>
+  <Link
+    href="/gallery"
+    className="text-nebari-muted transition-colors hover:text-nebari-green"
+  >
+    Gallery
+  </Link>
 
-            <Link
-              href="/studios"
-              className="text-nebari-muted transition-colors hover:text-nebari-green"
-            >
-              Studios
-            </Link>
+  <Link
+    href="/studios"
+    className="text-nebari-muted transition-colors hover:text-nebari-green"
+  >
+    Studios
+  </Link>
 
-          </nav>
+</nav>
 
         </div>
       </div>
