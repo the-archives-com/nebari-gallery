@@ -55,6 +55,12 @@ export default function StudiosPage() {
   const [studioOwners, setStudioOwners] =
     useState<StudioOwnerMap>({});
 
+  const [ownedStudioSlugs, setOwnedStudioSlugs] =
+    useState<string[]>([]);
+
+  const [favouriteStudioSlugs, setFavouriteStudioSlugs] =
+    useState<string[]>([]);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -65,6 +71,10 @@ export default function StudiosPage() {
     async function loadStudios() {
       setLoading(true);
       setErrorMessage("");
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       const [
         studioResult,
@@ -89,6 +99,47 @@ export default function StudiosPage() {
           })
           .limit(100),
       ]);
+
+      if (user) {
+        const [membershipResult, favouriteResult] =
+          await Promise.all([
+            supabase
+              .from("studio_members")
+              .select("studio_slug, role")
+              .eq("user_id", user.id)
+              .eq("role", "owner"),
+            supabase
+              .from("studio_favourites")
+              .select("studio_slug")
+              .eq("user_id", user.id),
+          ]);
+
+        if (membershipResult.error) {
+          console.error(
+            "Could not load owned Studios:",
+            membershipResult.error,
+          );
+        } else {
+          setOwnedStudioSlugs(
+            (membershipResult.data ?? [])
+              .map((membership) => membership.studio_slug)
+              .filter((slug) => slug !== "nebari"),
+          );
+        }
+
+        if (favouriteResult.error) {
+          console.error(
+            "Could not load favourite Studios:",
+            favouriteResult.error,
+          );
+        } else {
+          setFavouriteStudioSlugs(
+            (favouriteResult.data ?? []).map(
+              (favourite) => favourite.studio_slug,
+            ),
+          );
+        }
+      }
 
       if (studioResult.error) {
         console.error(
@@ -210,6 +261,47 @@ export default function StudiosPage() {
         selected.values(),
       );
     }, [artworks]);
+
+  /*
+   * PERSONALISED DIRECTORY
+   *
+   * A signed-in artist sees their own Studio first,
+   * followed by favourites, then all other Studios.
+   * Within each group, Studios remain alphabetical.
+   */
+
+  const orderedStudios =
+    useMemo(() => {
+      const owned = new Set(ownedStudioSlugs);
+      const favourites = new Set(favouriteStudioSlugs);
+
+      function priority(slug: string) {
+        if (owned.has(slug)) {
+          return 0;
+        }
+
+        if (favourites.has(slug)) {
+          return 1;
+        }
+
+        return 2;
+      }
+
+      return [...studios].sort((a, b) => {
+        const priorityDifference =
+          priority(a.slug) - priority(b.slug);
+
+        if (priorityDifference !== 0) {
+          return priorityDifference;
+        }
+
+        return a.name.localeCompare(b.name);
+      });
+    }, [
+      favouriteStudioSlugs,
+      ownedStudioSlugs,
+      studios,
+    ]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -510,11 +602,22 @@ export default function StudiosPage() {
 
                     <div className="space-y-3">
 
-                      {studios.map(
+                      {orderedStudios.map(
                         (studio) => {
                           const accent =
                             resolveStudioAccent(
                               studio.colour,
+                            );
+
+                          const isOwned =
+                            ownedStudioSlugs.includes(
+                              studio.slug,
+                            );
+
+                          const isFavourite =
+                            !isOwned &&
+                            favouriteStudioSlugs.includes(
+                              studio.slug,
                             );
 
                           return (
@@ -548,9 +651,25 @@ export default function StudiosPage() {
 
                                 <div className="min-w-0">
 
-                                  <p className="nebari-serif truncate text-xl font-medium text-nebari-ink">
-                                    {studio.name}
-                                  </p>
+                                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+
+                                    <p className="nebari-serif truncate text-xl font-medium text-nebari-ink">
+                                      {studio.name}
+                                    </p>
+
+                                    {isOwned && (
+                                      <span className="rounded-full bg-nebari-green px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.12em] text-white">
+                                        Your Studio
+                                      </span>
+                                    )}
+
+                                    {isFavourite && (
+                                      <span className="rounded-full border border-nebari-maple/40 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.12em] text-nebari-maple">
+                                        Favourite
+                                      </span>
+                                    )}
+
+                                  </div>
 
                                   {studio.description && (
                                     <p className="mt-1 truncate text-sm text-nebari-muted">

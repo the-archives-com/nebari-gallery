@@ -73,6 +73,18 @@ export default function StudioPage() {
   const [isOwner, setIsOwner] =
     useState(false);
 
+  const [isSignedIn, setIsSignedIn] =
+    useState(false);
+
+  const [isFavourite, setIsFavourite] =
+    useState(false);
+
+  const [favouriteBusy, setFavouriteBusy] =
+    useState(false);
+
+  const [favouriteMessage, setFavouriteMessage] =
+    useState("");
+
   const [activeFilter, setActiveFilter] =
     useState<Filter>("All Work");
 
@@ -81,6 +93,9 @@ export default function StudioPage() {
       setLoading(true);
       setNotFound(false);
       setIsOwner(false);
+      setIsSignedIn(false);
+      setIsFavourite(false);
+      setFavouriteMessage("");
 
       const {
         data: studioData,
@@ -147,6 +162,8 @@ export default function StudioPage() {
         userResult.data.user;
 
       if (user) {
+        setIsSignedIn(true);
+
         const {
           data: membership,
           error: membershipError,
@@ -171,6 +188,25 @@ export default function StudioPage() {
         setIsOwner(
           Boolean(membership),
         );
+
+        const {
+          data: favourite,
+          error: favouriteError,
+        } = await supabase
+          .from("studio_favourites")
+          .select("studio_slug")
+          .eq("user_id", user.id)
+          .eq("studio_slug", params.slug)
+          .maybeSingle();
+
+        if (favouriteError) {
+          console.error(
+            "Could not check favourite Studio:",
+            favouriteError,
+          );
+        }
+
+        setIsFavourite(Boolean(favourite));
       }
 
       setLoading(false);
@@ -178,6 +214,52 @@ export default function StudioPage() {
 
     loadStudio();
   }, [params.slug]);
+
+  async function handleFavourite() {
+    if (!isSignedIn) {
+      window.location.href = "/login";
+      return;
+    }
+
+    setFavouriteBusy(true);
+    setFavouriteMessage("");
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const result = isFavourite
+      ? await supabase
+          .from("studio_favourites")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("studio_slug", params.slug)
+      : await supabase
+          .from("studio_favourites")
+          .insert({
+            user_id: user.id,
+            studio_slug: params.slug,
+          });
+
+    if (result.error) {
+      console.error(
+        "Could not update favourite Studio:",
+        result.error,
+      );
+      setFavouriteMessage(
+        "Your favourites could not be updated. Please try again.",
+      );
+    } else {
+      setIsFavourite(!isFavourite);
+    }
+
+    setFavouriteBusy(false);
+  }
 
   /*
    * FILTER THE STUDIO WALL
@@ -494,6 +576,34 @@ export default function StudioPage() {
               + Hang Artwork
             </Link>
 
+          </div>
+        )}
+
+        {!isOwner && (
+          <div className="mt-8 text-center">
+            <button
+              type="button"
+              onClick={handleFavourite}
+              disabled={favouriteBusy}
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-nebari-green bg-nebari-surface px-8 py-3 text-xs font-medium uppercase tracking-[0.12em] text-nebari-green transition-all duration-300 hover:-translate-y-0.5 hover:bg-nebari-green hover:text-white hover:shadow-md disabled:cursor-wait disabled:opacity-60"
+            >
+              {favouriteBusy
+                ? "Saving..."
+                : isFavourite
+                  ? "♥ Favourited"
+                  : isSignedIn
+                    ? "♡ Add to Favourites"
+                    : "Sign in to Favourite"}
+            </button>
+
+            {favouriteMessage && (
+              <p
+                role="status"
+                className="mt-3 text-sm text-nebari-maple"
+              >
+                {favouriteMessage}
+              </p>
+            )}
           </div>
         )}
 
